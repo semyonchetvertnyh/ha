@@ -1,0 +1,508 @@
+sensor:
+  - name: "Outdoor Carbon monoxide (CO)"
+    unique_id: outdoor_carbon_monoxide_co
+    platform: min_max
+    type: max
+    entity_ids:
+      - sensor.kuklophoriakos_stathmos_carbon_monoxide
+      - sensor.limassol_co
+    round_digits: 0
+
+  - name: "Outdoor PM₂.₅"
+    unique_id: outdoor_pm2_5
+    platform: min_max
+    type: max
+    entity_ids:
+      - sensor.kuklophoriakos_stathmos_pm2_5
+      - sensor.limassol_pm2_5
+    round_digits: 0
+
+  - name: "Outdoor PM₁₀"
+    unique_id: outdoor_pm10
+    platform: min_max
+    type: max
+    entity_ids:
+      - sensor.kuklophoriakos_stathmos_pm10
+      - sensor.limassol_pm10
+    round_digits: 0
+
+  - name: "Outdoor O₃ (Ozone)"
+    unique_id: outdoor_ozone_o3
+    platform: min_max
+    type: max
+    entity_ids:
+      - sensor.kuklophoriakos_stathmos_ozone
+      - sensor.limassol_o3
+    round_digits: 0
+
+  - name: "Outdoor SO₂ (Sulphur dioxide)"
+    unique_id: outdoor_sulphur_dioxide_so2
+    platform: min_max
+    type: max
+    entity_ids:
+      - sensor.kuklophoriakos_stathmos_sulphur_dioxide
+      - sensor.limassol_so2
+    round_digits: 0
+
+  - name: "Outdoor NO₂ (Nitrogen dioxide)"
+    unique_id: outdoor_nitrogen_dioxide_no2
+    platform: min_max
+    type: max
+    entity_ids:
+      - sensor.kuklophoriakos_stathmos_nitrogen_dioxide
+      - sensor.limassol_no2
+    round_digits: 0
+
+template:
+  - binary_sensor:
+      - name: Outdoor Dust storm
+        unique_id: outdoor_dust_storm
+        device_class: problem
+        state: >
+          {% set pm10 = states('sensor.outdoor_pm10') | float(0) %}
+          {% set pm25 = states('sensor.outdoor_pm2_5') | float(0) %}
+          {% set ratio = (pm25 / pm10) if pm10 > 0 else 0 %}
+          {% set on_now = is_state(this.entity_id, 'on') %}
+
+          {% set dust_on_pm10 = 100 %}    {# μg/m³, "похоже на бурю" #}
+          {% set dust_off_pm10 = 70 %}    {# μg/m³, гистерезис #}
+          {% set dust_ratio_max = 0.40 %} {# если PM2.5 доля слишком высокая, это может быть дым/смог #}
+
+          {% if on_now %}
+            {{ pm10 >= dust_off_pm10 }}
+          {% else %}
+            {{ (pm10 >= dust_on_pm10) and (ratio <= dust_ratio_max) }}
+          {% endif %}
+        attributes:
+          pm10: "{{ states('sensor.outdoor_pm10') | float(0) }}"
+          pm25: "{{ states('sensor.outdoor_pm2_5') | float(0) }}"
+          pm25_pm10_ratio: >
+            {% set pm10 = states('sensor.outdoor_pm10') | float(0) %}
+            {% set pm25 = states('sensor.outdoor_pm2_5') | float(0) %}
+            {{ (pm25 / pm10) | round(2) if pm10 > 0 else 0 }}
+
+      # - name: Outdoor Air Quality Low
+      #   unique_id: outdoor_air_quality_low
+      #   device_class: problem
+      #   state: >
+      #     {% set pm10 = states('sensor.outdoor_pm10') | float(0) %}
+      #     {% set pm25 = states('sensor.outdoor_pm2_5') | float(0) %}
+      #     {% set o3  = states('sensor.outdoor_o3_ozone') | float(0) %}
+      #     {% set no2 = states('sensor.outdoor_no2_nitrogen_dioxide') | float(0) %}
+      #     {% set so2 = states('sensor.outdoor_so2_sulphur_dioxide') | float(0) %}
+      #     {% set co  = states('sensor.outdoor_carbon_monoxide_co') | float(0) %}  {# mg/m³ #}
+      #     {% set on_now = is_state(this.entity_id, 'on') %}
+
+      #     {% set pm_on_pm10 = 60 %}
+      #     {% set pm_on_pm25 = 25 %}
+      #     {% set pm_off_pm10 = 40 %}
+      #     {% set pm_off_pm25 = 15 %}
+
+      #     {% set gas_on_no2 = 50 %}
+      #     {% set gas_on_o3  = 120 %}
+      #     {% set gas_on_so2 = 40 %}
+      #     {% set gas_on_co  = 4 %}
+
+      #     {% set pm_bad_on  = (pm10 >= pm_on_pm10) or (pm25 >= pm_on_pm25) %}
+      #     {% set pm_bad_off = (pm10 >= pm_off_pm10) or (pm25 >= pm_off_pm25) %}
+      #     {% set gas_bad    = (no2 >= gas_on_no2) or (o3 >= gas_on_o3) or (so2 >= gas_on_so2) or (co >= gas_on_co) %}
+
+      #     {% if on_now %}
+      #       {{ pm_bad_off or gas_bad }}
+      #     {% else %}
+      #       {{ pm_bad_on or gas_bad }}
+      #     {% endif %}
+      #   attributes:
+      #     pm10: "{{ states('sensor.outdoor_pm10_2') }}"
+      #     pm25: "{{ states('sensor.outdoor_pm2_5_2') }}"
+      #     no2: "{{ states('sensor.outdoor_o3_ozone_2') }}"
+      #     o3: "{{ states('sensor.outdoor_no2_nitrogen_dioxide_2') }}"
+      #     so2: "{{ states('sensor.outdoor_so2_sulphur_dioxide_2') }}"
+      #     co: "{{ states('sensor.outdoor_carbon_monoxide_co_2') }}"
+
+  - sensor:
+      - name: "Outdoor Carbon monoxide (CO)"
+        unique_id: outdoor_carbon_monoxide_co_category
+        icon: mdi:molecule-co
+        state: >
+          {% set aqi = state_attr(this.entity_id, 'us_aqi_value') | float(0) %}
+          {% if aqi <= 50 %} Excellent
+          {% elif aqi <= 100 %} Good
+          {% elif aqi <= 150 %} Fair
+          {% elif aqi <= 200 %} Inferior
+          {% else %} Poor
+          {% endif %}
+        attributes:
+          co_mg_m3: "{{ states('sensor.outdoor_carbon_monoxide_co') }}"
+          co_ppm_est_25c_1atm: >
+            {% set mg = states('sensor.outdoor_carbon_monoxide_co') | float(0) %}
+            {{ (mg * 24.45 / 28.01) | round(3) }}
+          us_aqi_value: >
+            {% set ppm = (states('sensor.outdoor_carbon_monoxide_co') | float(0)) * 24.45 / 28.01 %}
+            {% if ppm <= 4.4 %}
+              {% set Cl, Ch, Il, Ih = 0.0, 4.4, 0, 50 %}
+            {% elif ppm <= 9.4 %}
+              {% set Cl, Ch, Il, Ih = 4.5, 9.4, 51, 100 %}
+            {% elif ppm <= 12.4 %}
+              {% set Cl, Ch, Il, Ih = 9.5, 12.4, 101, 150 %}
+            {% elif ppm <= 15.4 %}
+              {% set Cl, Ch, Il, Ih = 12.5, 15.4, 151, 200 %}
+            {% elif ppm <= 30.4 %}
+              {% set Cl, Ch, Il, Ih = 15.5, 30.4, 201, 300 %}
+            {% elif ppm <= 40.4 %}
+              {% set Cl, Ch, Il, Ih = 30.5, 40.4, 301, 400 %}
+            {% elif ppm <= 50.4 %}
+              {% set Cl, Ch, Il, Ih = 40.5, 50.4, 401, 500 %}
+            {% else %}
+              {% set Cl, Ch, Il, Ih = 50.4, 50.4, 500, 500 %}
+            {% endif %}
+            {{ ((Ih-Il) / (Ch-Cl) * (ppm-Cl) + Il) | round(0) }}
+          us_aqi_category: >
+            {% set aqi = state_attr(this.entity_id, 'us_aqi_value') | float(0) %}
+            {% if aqi <= 50 %} Good (0-50)
+            {% elif aqi <= 100 %} Moderate (51-100)
+            {% elif aqi <= 150 %} Unhealthy for Sensitive Groups (101-150)
+            {% elif aqi <= 200 %} Unhealthy (151-200)
+            {% else %} Very Unhealthy (201+)
+            {% endif %}
+          cyprus_air_quality: >
+            {% set mg = states('sensor.outdoor_carbon_monoxide_co') | float(0) %}
+            {% set t1 = 7000  * 28.01 / 24.45 %}
+            {% set t2 = 15000 * 28.01 / 24.45 %}
+            {% set t3 = 20000 * 28.01 / 24.45 %}
+            {% if mg < t1 %} Low (1)
+            {% elif mg < t2 %} Moderate (2)
+            {% elif mg < t3 %} High (3)
+            {% else %} Very High (4)
+            {% endif %}
+
+      - name: "Outdoor PM₂.₅"
+        unique_id: outdoor_pm2_5_category
+        icon: mdi:air-filter
+        state: >
+          {% set aqi = state_attr(this.entity_id, 'us_aqi_value') | float(0) %}
+          {% if aqi <= 50 %} Excellent
+          {% elif aqi <= 100 %} Good
+          {% elif aqi <= 150 %} Fair
+          {% elif aqi <= 200 %} Inferior
+          {% else %} Poor
+          {% endif %}
+        attributes:
+          us_aqi_value: >
+            {% set C = states('sensor.outdoor_pm2_5') | float(0) %}
+            {% if C <= 12.0 %}
+              {% set Cl, Ch, Il, Ih = 0.0, 12.0, 0, 50 %}
+            {% elif C <= 35.4 %}
+              {% set Cl, Ch, Il, Ih = 12.1, 35.4, 51, 100 %}
+            {% elif C <= 55.4 %}
+              {% set Cl, Ch, Il, Ih = 35.5, 55.4, 101, 150 %}
+            {% elif C <= 150.4 %}
+              {% set Cl, Ch, Il, Ih = 55.5, 150.4, 151, 200 %}
+            {% elif C <= 250.4 %}
+              {% set Cl, Ch, Il, Ih = 150.5, 250.4, 201, 300 %}
+            {% elif C <= 350.4 %}
+              {% set Cl, Ch, Il, Ih = 250.5, 350.4, 301, 400 %}
+            {% elif C <= 500.4 %}
+              {% set Cl, Ch, Il, Ih = 350.5, 500.4, 401, 500 %}
+            {% else %}
+              {% set Cl, Ch, Il, Ih = 500.4, 500.4, 500, 500 %}
+            {% endif %}
+            {{ ((Ih-Il) / (Ch-Cl) * (C-Cl) + Il) | round(0) }}
+          us_aqi_category: >
+            {% set aqi = state_attr(this.entity_id, 'us_aqi_value') | float(0) %}
+            {% if aqi <= 50 %} Good (0-50)
+            {% elif aqi <= 100 %} Moderate (51-100)
+            {% elif aqi <= 150 %} Unhealthy for Sensitive Groups (101-150)
+            {% elif aqi <= 200 %} Unhealthy (151-200)
+            {% else %} Very Unhealthy (201+)
+            {% endif %}
+          cyprus_air_quality: >
+            {% set v = states('sensor.outdoor_pm2_5') | float(0) %}
+            {% if v < 25 %} Low (1)
+            {% elif v < 50 %} Moderate (2)
+            {% elif v < 100 %} High (3)
+            {% else %} Very High (4)
+            {% endif %}
+
+      - name: "Outdoor PM₁₀"
+        unique_id: outdoor_pm1_0_category
+        icon: mdi:blur
+        state: >
+          {% set aqi = state_attr(this.entity_id, 'us_aqi_value') | float(0) %}
+          {% if aqi <= 50 %} Excellent
+          {% elif aqi <= 100 %} Good
+          {% elif aqi <= 150 %} Fair
+          {% elif aqi <= 200 %} Inferior
+          {% else %} Poor
+          {% endif %}
+        attributes:
+          us_aqi_value: >
+            {% set C = states('sensor.outdoor_pm10') | float(0) %}
+            {% if C <= 54 %}
+              {% set Cl, Ch, Il, Ih = 0, 54, 0, 50 %}
+            {% elif C <= 154 %}
+              {% set Cl, Ch, Il, Ih = 55, 154, 51, 100 %}
+            {% elif C <= 254 %}
+              {% set Cl, Ch, Il, Ih = 155, 254, 101, 150 %}
+            {% elif C <= 354 %}
+              {% set Cl, Ch, Il, Ih = 255, 354, 151, 200 %}
+            {% elif C <= 424 %}
+              {% set Cl, Ch, Il, Ih = 355, 424, 201, 300 %}
+            {% elif C <= 504 %}
+              {% set Cl, Ch, Il, Ih = 425, 504, 301, 400 %}
+            {% elif C <= 604 %}
+              {% set Cl, Ch, Il, Ih = 505, 604, 401, 500 %}
+            {% else %}
+              {% set Cl, Ch, Il, Ih = 604, 604, 500, 500 %}
+            {% endif %}
+            {{ ((Ih-Il) / (Ch-Cl) * (C-Cl) + Il) | round(0) }}
+          us_aqi_category: >
+            {% set aqi = state_attr(this.entity_id, 'us_aqi_value') | float(0) %}
+            {% if aqi <= 50 %} Good (0-50)
+            {% elif aqi <= 100 %} Moderate (51-100)
+            {% elif aqi <= 150 %} Unhealthy for Sensitive Groups (101-150)
+            {% elif aqi <= 200 %} Unhealthy (151-200)
+            {% else %} Very Unhealthy (201+)
+            {% endif %}
+          cyprus_air_quality: >
+            {% set v = states('sensor.outdoor_pm10') | float(0) %}
+            {% if v < 50 %} Low (1)
+            {% elif v < 100 %} Moderate (2)
+            {% elif v < 200 %} High (3)
+            {% else %} Very High (4)
+            {% endif %}
+
+      - name: "Outdoor O₃ (Ozone)"
+        unique_id: outdoor_ozone_o3_category
+        icon: mdi:weather-sunny-alert
+        state: >
+          {% set aqi = state_attr(this.entity_id, 'us_aqi_value') | float(0) %}
+          {% if aqi <= 50 %} Excellent
+          {% elif aqi <= 100 %} Good
+          {% elif aqi <= 150 %} Fair
+          {% elif aqi <= 200 %} Inferior
+          {% else %} Poor
+          {% endif %}
+        attributes:
+          o3_ug_m3: "{{ states('sensor.outdoor_o3_ozone') }}"
+          o3_ppb_est_25c_1atm: >
+            {% set ug = states('sensor.outdoor_o3_ozone') | float(0) %}
+            {{ (ug / 2.00) | round(1) }}
+          us_aqi_value: >
+            {% set ppm8 = (states('sensor.outdoor_o3_ozone') | float(0)) / 2.00 / 1000 %}
+            {% if ppm8 <= 0.054 %}
+              {% set Cl, Ch, Il, Ih = 0.000, 0.054, 0, 50 %}
+            {% elif ppm8 <= 0.070 %}
+              {% set Cl, Ch, Il, Ih = 0.055, 0.070, 51, 100 %}
+            {% elif ppm8 <= 0.085 %}
+              {% set Cl, Ch, Il, Ih = 0.071, 0.085, 101, 150 %}
+            {% elif ppm8 <= 0.105 %}
+              {% set Cl, Ch, Il, Ih = 0.086, 0.105, 151, 200 %}
+            {% elif ppm8 <= 0.200 %}
+              {% set Cl, Ch, Il, Ih = 0.106, 0.200, 201, 300 %}
+            {% else %}
+              {% set Cl, Ch, Il, Ih = 0.200, 0.200, 300, 300 %}
+            {% endif %}
+            {{ ((Ih-Il) / (Ch-Cl) * (ppm8-Cl) + Il) | round(0) if Ch>Cl else (Il|round(0)) }}
+          us_aqi_category: >
+            {% set aqi = state_attr(this.entity_id, 'us_aqi_value') | float(0) %}
+            {% if aqi <= 50 %} Good (0-50)
+            {% elif aqi <= 100 %} Moderate (51-100)
+            {% elif aqi <= 150 %} Unhealthy for Sensitive Groups (101-150)
+            {% elif aqi <= 200 %} Unhealthy (151-200)
+            {% else %} Very Unhealthy (201+)
+            {% endif %}
+          cyprus_air_quality: >
+            {% set v = states('sensor.outdoor_o3_ozone') | float(0) %}
+            {% if v < 100 %} Low (1)
+            {% elif v < 140 %} Moderate (2)
+            {% elif v < 180 %} High (3)
+            {% else %} Very High (4)
+            {% endif %}
+
+      - name: "Outdoor SO₂ (Sulphur dioxide)"
+        unique_id: outdoor_sulphur_dioxide_so2
+        icon: mdi:flask
+        state: >
+          {% set aqi = state_attr(this.entity_id, 'us_aqi_value') | float(0) %}
+          {% if aqi <= 50 %} Excellent
+          {% elif aqi <= 100 %} Good
+          {% elif aqi <= 150 %} Fair
+          {% elif aqi <= 200 %} Inferior
+          {% else %} Poor
+          {% endif %}
+        attributes:
+          so2_ug_m3: "{{ states('sensor.outdoor_so2_sulphur_dioxide') }}"
+          so2_ppb_est_25c_1atm: >
+            {% set ug = states('sensor.outdoor_so2_sulphur_dioxide') | float(0) %}
+            {{ (ug / 2.62) | round(1) }}
+          us_aqi_value: >
+            {% set ppb = (states('sensor.outdoor_so2_sulphur_dioxide') | float(0)) / 2.62 %}
+            {% if ppb <= 35 %}
+              {% set Cl, Ch, Il, Ih = 0, 35, 0, 50 %}
+            {% elif ppb <= 75 %}
+              {% set Cl, Ch, Il, Ih = 36, 75, 51, 100 %}
+            {% elif ppb <= 185 %}
+              {% set Cl, Ch, Il, Ih = 76, 185, 101, 150 %}
+            {% elif ppb <= 304 %}
+              {% set Cl, Ch, Il, Ih = 186, 304, 151, 200 %}
+            {% elif ppb <= 604 %}
+              {% set Cl, Ch, Il, Ih = 305, 604, 201, 300 %}
+            {% elif ppb <= 804 %}
+              {% set Cl, Ch, Il, Ih = 605, 804, 301, 400 %}
+            {% elif ppb <= 1004 %}
+              {% set Cl, Ch, Il, Ih = 805, 1004, 401, 500 %}
+            {% else %}
+              {% set Cl, Ch, Il, Ih = 1004, 1004, 500, 500 %}
+            {% endif %}
+            {{ ((Ih-Il) / (Ch-Cl) * (ppb-Cl) + Il) | round(0) }}
+          us_aqi_category: >
+            {% set aqi = state_attr(this.entity_id, 'us_aqi_value') | float(0) %}
+            {% if aqi <= 50 %} Good (0-50)
+            {% elif aqi <= 100 %} Moderate (51-100)
+            {% elif aqi <= 150 %} Unhealthy for Sensitive Groups (101-150)
+            {% elif aqi <= 200 %} Unhealthy (151-200)
+            {% else %} Very Unhealthy (201+)
+            {% endif %}
+          cyprus_air_quality: >
+            {% set v = states('sensor.outdoor_so2_sulphur_dioxide') | float(0) %}
+            {% if v < 150 %} Low (1)
+            {% elif v < 250 %} Moderate (2)
+            {% elif v < 350 %} High (3)
+            {% else %} Very High (4)
+            {% endif %}
+
+      - name: "Outdoor NO₂ (Nitrogen dioxide)"
+        unique_id: outdoor_nitrogen_dioxide_no2_category
+        icon: mdi:chemical-weapon
+        state: >
+          {% set aqi = state_attr(this.entity_id, 'us_aqi_value') | float(0) %}
+          {% if aqi <= 50 %} Excellent
+          {% elif aqi <= 100 %} Good
+          {% elif aqi <= 150 %} Fair
+          {% elif aqi <= 200 %} Inferior
+          {% else %} Poor
+          {% endif %}
+        attributes:
+          no2_ug_m3: "{{ states('sensor.outdoor_no2_nitrogen_dioxide') }}"
+          no2_ppb_est_25c_1atm: >
+            {% set ug = states('sensor.outdoor_no2_nitrogen_dioxide') | float(0) %}
+            {{ (ug / 1.88) | round(1) }}
+          us_aqi_value: >
+            {% set ppb = (states('sensor.outdoor_no2_nitrogen_dioxide') | float(0)) / 1.88 %}
+            {% if ppb <= 53 %}
+              {% set Cl, Ch, Il, Ih = 0, 53, 0, 50 %}
+            {% elif ppb <= 100 %}
+              {% set Cl, Ch, Il, Ih = 54, 100, 51, 100 %}
+            {% elif ppb <= 360 %}
+              {% set Cl, Ch, Il, Ih = 101, 360, 101, 150 %}
+            {% elif ppb <= 649 %}
+              {% set Cl, Ch, Il, Ih = 361, 649, 151, 200 %}
+            {% elif ppb <= 1249 %}
+              {% set Cl, Ch, Il, Ih = 650, 1249, 201, 300 %}
+            {% elif ppb <= 1649 %}
+              {% set Cl, Ch, Il, Ih = 1250, 1649, 301, 400 %}
+            {% elif ppb <= 2049 %}
+              {% set Cl, Ch, Il, Ih = 1650, 2049, 401, 500 %}
+            {% else %}
+              {% set Cl, Ch, Il, Ih = 2049, 2049, 500, 500 %}
+            {% endif %}
+            {{ ((Ih-Il) / (Ch-Cl) * (ppb-Cl) + Il) | round(0) }}
+          us_aqi_category: >
+            {% set aqi = state_attr(this.entity_id, 'us_aqi_value') | float(0) %}
+            {% if aqi <= 50 %} Good (0-50)
+            {% elif aqi <= 100 %} Moderate (51-100)
+            {% elif aqi <= 150 %} Unhealthy for Sensitive Groups (101-150)
+            {% elif aqi <= 200 %} Unhealthy (151-200)
+            {% else %} Very Unhealthy (201+)
+            {% endif %}
+          cyprus_air_quality: >
+            {% set v = states('sensor.outdoor_no2_nitrogen_dioxide') | float(0) %}
+            {% if v < 100 %} Low (1)
+            {% elif v < 150 %} Moderate (2)
+            {% elif v < 200 %} High (3)
+            {% else %} Very High (4)
+            {% endif %}
+
+homeassistant:
+  customize:
+    sensor.outdoor_carbon_monoxide_co:
+      device_class: carbon_monoxide
+      icon: mdi:molecule-co
+    sensor.kuklophoriakos_stathmos_carbon_monoxide:
+      device_class: carbon_monoxide
+      unit_of_measurement: "mg/m³"
+
+    sensor.outdoor_pm2_5:
+      device_class: pm25
+      icon: mdi:molecule
+    sensor.kuklophoriakos_stathmos_pm2_5:
+      device_class: pm25
+      unit_of_measurement: "μg/m³"
+
+    sensor.outdoor_pm10:
+      device_class: pm10
+      icon: mdi:molecule
+    sensor.kuklophoriakos_stathmos_pm10:
+      device_class: pm10
+      unit_of_measurement: "μg/m³"
+
+    sensor.outdoor_o3_ozone:
+      device_class: ozone
+      icon: mdi:molecule-co
+    sensor.kuklophoriakos_stathmos_ozone:
+      device_class: ozone
+      unit_of_measurement: "μg/m³"
+
+    sensor.outdoor_so2_sulphur_dioxide:
+      device_class: sulphur_dioxide
+      icon: mdi:molecule-co
+    sensor.kuklophoriakos_stathmos_sulphur_dioxide:
+      device_class: sulphur_dioxide
+      unit_of_measurement: "μg/m³"
+
+    sensor.outdoor_no2_nitrogen_dioxide:
+      device_class: nitrogen_dioxide
+      icon: mdi:molecule-co
+    sensor.kuklophoriakos_stathmos_nitrogen_dioxide:
+      device_class: nitrogen_dioxide
+      unit_of_measurement: "μg/m³"
+
+# template:
+#   - sensor:
+#       - name: "PM2.5 Air Quality (HomeKit)"
+#         unique_id: pm25_air_quality_homekit
+#         icon: mdi:air-filter
+#         state: >-
+#           {% set pm = states('sensor.pm25')|float(none) %}
+#           {% if pm is none %}
+#             unknown
+#           {% elif pm <= 9.0 %}
+#             Excellent
+#           {% elif pm <= 35.4 %}
+#             Good
+#           {% elif pm <= 55.4 %}
+#             Fair
+#           {% elif pm <= 125.4 %}
+#             Inferior
+#           {% else %}
+#             Poor
+#           {% endif %}
+#         attributes:
+#           pm25: >-
+#             {{ states('sensor.pm25')|float(none) }}
+#           us_aqi: >-
+#             {% set pm = states('sensor.pm25')|float(none) %}
+#             {% if pm is none %}
+#               unknown
+#             {% elif pm <= 9.0 %}
+#               Good (0-50)
+#             {% elif pm <= 35.4 %}
+#               Moderate (51-100)
+#             {% elif pm <= 55.4 %}
+#               Unhealthy for Sensitive Groups (101-150)
+#             {% elif pm <= 125.4 %}
+#               Unhealthy (151-200)
+#             {% else %}
+#               Very Unhealthy (201+)
+#             {% endif %}

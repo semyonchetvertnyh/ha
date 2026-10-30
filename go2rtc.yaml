@@ -1,0 +1,33 @@
+streams:
+  doorbell: 
+    - hass:Entryway Doorbell
+    - ffmpeg:doorbell#audio=aac#audio=opus
+
+  kitchen_camera:
+    - hass:Kitchen Camera Hub
+    - ffmpeg:kitchen_camera#audio=aac#audio=opus
+
+  living_room_camera:
+    - hass:Living Room Camera Hub
+    - ffmpeg:living_room_camera#audio=aac#audio=opus
+
+homekit:
+  doorbell:
+    name: Doorbell
+    pin: "56781234"
+    pairings:
+      - client_id=8F73DCA2-F609-47F8-A91E-04F0EE01A8D1&client_public=63c659fe8e044c05306a68fb42470728e1bce6e772b284601dc37b46b295157b&permissions=0
+
+  kitchen_camera:
+    name: Kitchen Camera
+    pin: "56781234"
+    pairings:
+      - client_id=851928A7-FED9-45B3-BF35-CC1057C45F74&client_public=28d981a3843c273913a64c09b3b47352b37e2fb5ede27e37a562abf498f2ff19&permissions=1
+      - client_id=8F73DCA2-F609-47F8-A91E-04F0EE01A8D1&client_public=63c659fe8e044c05306a68fb42470728e1bce6e772b284601dc37b46b295157b&permissions=0
+
+  living_room_camera:
+    name: Living Room Camera
+    pin: "56781234"
+    pairings:
+      - client_id=851928A7-FED9-45B3-BF35-CC1057C45F74&client_public=28d981a3843c273913a64c09b3b47352b37e2fb5ede27e37a562abf498f2ff19&permissions=1
+      - client_id=8F73DCA2-F609-47F8-A91E-04F0EE01A8D1&client_public=63c659fe8e044c05306a68fb42470728e1bce6e772b284601dc37b46b295157b&permissions=0

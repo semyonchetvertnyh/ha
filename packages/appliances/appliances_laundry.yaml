@@ -1,0 +1,226 @@
+# Washer: ?
+# Dryer: Inventor GXD08HP
+
+homeassistant:
+  customize:
+    binary_sensor.washer:
+      device_class: running
+      icon: mdi:washing-machine
+    binary_sensor.dryer:
+      device_class: running
+      icon: mdi:tumble-dryer
+
+timer:
+  washer:
+    name: Washer
+    icon: mdi:washing-machine
+    restore: true
+  dryer:
+    name: Dryer
+    icon: mdi:tumble-dryer
+    restore: true
+
+automation:
+  - alias: Timer - Washer
+    id: washer_timer
+    mode: restart
+    triggers:
+      - platform: state
+        entity_id: sensor.washer_time_remaining
+        id: washer_remaining_changed
+      - platform: state
+        entity_id: binary_sensor.washer
+        id: washer_changed
+    actions:
+      - choose:
+          # A) Обновили washer_time_remaining, стиралка ON и там число > 0 -> ставим таймер на это время
+          - conditions:
+              - condition: trigger
+                id: washer_remaining_changed
+              - condition: state          # <-- ДОБАВЛЕНО
+                entity_id: binary_sensor.washer
+                state: "on"
+              - condition: not
+                conditions:
+                  - condition: state
+                    entity_id: sensor.washer_time_remaining
+                    state:
+                      - unknown
+                      - unavailable
+                      - none
+              - condition: template
+                value_template: "{{ states('sensor.washer_time_remaining') | int(0) > 0 }}"
+            sequence:
+              - action: timer.start
+                target:
+                  entity_id: timer.washer
+                data:
+                  duration: "{{ (states('sensor.washer_time_remaining') | int(0)) * 60 }}"
+          # B) washer_time_remaining стал "плохим" (0/unknown/...) и стиралка ON -> продлеваем по 10 минут
+          - conditions:
+              - condition: trigger
+                id: washer_remaining_changed
+              - condition: state
+                entity_id: binary_sensor.washer
+                state: "on"
+              - condition: or
+                conditions:
+                  - condition: state
+                    entity_id: sensor.washer_time_remaining
+                    state: "0"
+                  - condition: state
+                    entity_id: sensor.washer_time_remaining
+                    state:
+                      - unknown
+                      - unavailable
+                      - none
+            sequence:
+              - repeat:
+                  while:
+                    - condition: state
+                      entity_id: binary_sensor.washer
+                      state: "on"
+                  sequence:
+                    - action: timer.start
+                      target:
+                        entity_id: timer.washer
+                      data:
+                        duration: "00:10:00"
+                    - wait_for_trigger:
+                        - platform: state
+                          entity_id: binary_sensor.washer
+                          to: "off"
+                      timeout: "00:10:00"
+                      continue_on_timeout: true
+          # C) Стиралка стала OFF -> финишируем таймер сразу
+          - conditions:
+              - condition: trigger
+                id: washer_changed
+              - condition: state
+                entity_id: binary_sensor.washer
+                state: "off"
+            sequence:
+              - action: timer.finish
+                target:
+                  entity_id: timer.washer
+
+  - alias: Timer - Dryer
+    id: dryer_timer
+    mode: restart
+    triggers:
+      - platform: state
+        entity_id: sensor.dryer_time_remaining
+        id: dryer_remaining_changed
+      - platform: state
+        entity_id: binary_sensor.dryer
+        id: dryer_changed
+    actions:
+      - choose:
+          # A) Обновили dryer_time_remaining, сушилка ON и там число > 0 -> ставим таймер на это время
+          - conditions:
+              - condition: trigger
+                id: dryer_remaining_changed
+              - condition: state          # <-- ДОБАВЛЕНО
+                entity_id: binary_sensor.dryer
+                state: "on"
+              - condition: not
+                conditions:
+                  - condition: state
+                    entity_id: sensor.dryer_time_remaining
+                    state:
+                      - unknown
+                      - unavailable
+                      - none
+              - condition: template
+                value_template: "{{ states('sensor.dryer_time_remaining') | int(0) > 0 }}"
+            sequence:
+              - action: timer.start
+                target:
+                  entity_id: timer.dryer
+                data:
+                  duration: "{{ (states('sensor.dryer_time_remaining') | int(0)) * 60 }}"
+          # B) dryer_time_remaining стал "плохим" (0/unknown/...) и сушилка ON -> продлеваем по 10 минут
+          - conditions:
+              - condition: trigger
+                id: dryer_remaining_changed
+              - condition: state
+                entity_id: binary_sensor.dryer
+                state: "on"
+              - condition: or
+                conditions:
+                  - condition: state
+                    entity_id: sensor.dryer_time_remaining
+                    state: "0"
+                  - condition: state
+                    entity_id: sensor.dryer_time_remaining
+                    state:
+                      - unknown
+                      - unavailable
+                      - none
+            sequence:
+              - repeat:
+                  while:
+                    - condition: state
+                      entity_id: binary_sensor.dryer
+                      state: "on"
+                  sequence:
+                    - action: timer.start
+                      target:
+                        entity_id: timer.dryer
+                      data:
+                        duration: "00:10:00"
+                    - wait_for_trigger:
+                        - platform: state
+                          entity_id: binary_sensor.dryer
+                          to: "off"
+                      timeout: "00:10:00"
+                      continue_on_timeout: true
+          # C) Сушилка стала OFF -> финишируем таймер сразу
+          - conditions:
+              - condition: trigger
+                id: dryer_changed
+              - condition: state
+                entity_id: binary_sensor.dryer
+                state: "off"
+            sequence:
+              - action: timer.finish
+                target:
+                  entity_id: timer.dryer
+          # D) Сушилка стала ON, а время уже известно -> стартуем таймер не дожидаясь тика
+          - conditions:
+              - condition: trigger
+                id: dryer_changed
+              - condition: state
+                entity_id: binary_sensor.dryer
+                state: "on"
+              - condition: template
+                value_template: "{{ states('sensor.dryer_time_remaining') | int(0) > 0 }}"
+            sequence:
+              - action: timer.start
+                target:
+                  entity_id: timer.dryer
+                data:
+                  duration: "{{ (states('sensor.dryer_time_remaining') | int(0)) * 60 }}"
+
+# template:
+#   - binary_sensor:
+#       - name: "Washer"
+#         unique_id: washer
+#         delay_off:
+#           minutes: 3
+#         state: >
+#           {{ states('sensor.washer_power')|float > 2 }}
+#         availability: "{{ is_number(states('sensor.washer_power')) }}"
+#         device_class: running
+#         icon: mdi:washing-machine
+#       - name: "Dryer"
+#         unique_id: dryer
+#         delay_on:
+#           minutes: 2
+#         delay_off:
+#           minutes: 3
+#         state: >
+#           {{ states('sensor.dryer_power')|float > 2 }}
+#         availability: "{{ is_number(states('sensor.dryer_power')) }}"
+#         device_class: running
+#         icon: mdi:tumble-dryer

@@ -1,0 +1,16 @@
+timer:
+  iron:
+    name: Iron
+    icon: mdi:iron
+    duration: "00:20:00"
+    restore: true
+
+automation:
+  - alias: Timer - Iron
+    id: iron_timer
+    use_blueprint:
+      path: semyonchetvertnyh/timer_sync_to_switch.yaml
+      input:
+        timer: timer.iron
+        switch: switch.iron
+        turn_off_when_timer_finished: false

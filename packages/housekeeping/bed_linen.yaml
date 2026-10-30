@@ -1,0 +1,180 @@
+input_number:
+  irynas_bed_pillowcase:
+    name: "Iryna’s Bed Pillowcase"
+    min: 0
+    max: 365
+    step: 1
+    mode: box
+    unit_of_measurement: nights
+    icon: mdi:bed
+  semyons_bed_pillowcase:
+    name: "Semyon’s Bed Pillowcase"
+    min: 0
+    max: 365
+    step: 1
+    mode: box
+    unit_of_measurement: nights
+    icon: mdi:bed
+
+  irynas_bed_sheets:
+    name: "Iryna’s Bed Sheets"
+    min: 0
+    max: 365
+    step: 1
+    mode: box
+    unit_of_measurement: nights
+    icon: mdi:bed-empty
+  semyons_bed_sheets:
+    name: "Semyon’s Bed Sheets"
+    min: 0
+    max: 365
+    step: 1
+    mode: box
+    unit_of_measurement: nights
+    icon: mdi:bed-empty
+
+input_button:
+  irynas_bed_pillowcase_change:
+    name: "Change Iryna’s Bed Pillowcase"
+    icon: mdi:bed
+  semyons_bed_pillowcase_change:
+    name: "Change Semyons’s Bed Pillowcase"
+    icon: mdi:bed
+
+  irynas_bed_sheets_change:
+    name: "Change Iryna’s Bed Sheets"
+    icon: mdi:bed-empty
+  semyons_bed_sheets_change:
+    name: "Change Semyons’s Bed Sheets"
+    icon: mdi:bed-empty
+
+template:
+  - binary_sensor:
+      - name: "Iryna’s Bed Pillowcase"
+        unique_id: irynas_bed_pillowcase
+        state: >
+          {{ states('input_number.irynas_bed_pillowcase') | int > 7 }}
+        device_class: problem
+        icon: mdi:bed
+        attributes:
+          nights: "{{ states('input_number.irynas_bed_pillowcase') | int }}"
+
+      - name: "Iryna’s Bed Sheets"
+        unique_id: irynas_bed_sheets
+        state: >
+          {{ states('input_number.irynas_bed_sheets') | int > 14 }}
+        device_class: problem
+        icon: mdi:bed-empty
+        attributes:
+          nights: "{{ states('input_number.irynas_bed_sheets') | int }}"
+
+      - name: "Semyon’s Bed Pillowcase"
+        unique_id: semyons_bed_pillowcase
+        state: >
+          {{ states('input_number.semyons_bed_pillowcase') | int > 7 }}
+        device_class: problem
+        icon: mdi:bed
+        attributes:
+          nights: "{{ states('input_number.semyons_bed_pillowcase') | int }}"
+
+      - name: "Semyon’s Bed Sheets"
+        unique_id: semyons_bed_sheets
+        state: >
+          {{ states('input_number.semyons_bed_sheets') | int > 14 }}
+        device_class: problem
+        icon: mdi:bed-empty
+        attributes:
+          nights: "{{ states('input_number.semyons_bed_sheets') | int }}"
+
+automation:
+  - alias: Bed Linen
+    id: bed_linen
+    mode: parallel
+    triggers:
+      - id: morning
+        trigger: time
+        at: "05:30:00"
+        # trigger: state
+        # entity_id: binary_sensor.morning
+        # to: "on"
+
+      - id: irynas_bed_pillowcase_change
+        trigger: state
+        entity_id: input_button.irynas_bed_pillowcase_change
+      - id: semyons_bed_pillowcase
+        trigger: state
+        entity_id: input_button.semyons_bed_pillowcase_change
+
+      - id: irynas_bed_sheets_change
+        trigger: state
+        entity_id: input_button.irynas_bed_sheets_change
+      - id: semyons_bed_sheets_change
+        trigger: state
+        entity_id: input_button.semyons_bed_sheets_change
+    actions:
+      - choose:
+          - conditions:
+              - condition: trigger
+                id:
+                  - morning
+            sequence:
+              - sequence:
+                  - condition: state
+                    entity_id: person.iryna
+                    state: home
+                  - action: input_number.increment
+                    target:
+                      entity_id:
+                        - input_number.irynas_bed_pillowcase
+                        - input_number.irynas_bed_sheets
+              - sequence:
+                  - condition: state
+                    entity_id: person.semyon
+                    state: home
+                  - action: input_number.increment
+                    target:
+                      entity_id:
+                        - input_number.semyons_bed_pillowcase
+                        - input_number.semyons_bed_sheets
+
+          - conditions:
+              - condition: trigger
+                id:
+                  - irynas_bed_pillowcase_change
+            sequence:
+              - action: input_number.set_value
+                target:
+                  entity_id: input_number.irynas_bed_pillowcase
+                data:
+                  value: 0
+          - conditions:
+              - condition: trigger
+                id:
+                  - semyons_bed_pillowcase
+            sequence:
+              - action: input_number.set_value
+                target:
+                  entity_id: input_number.semyons_bed_pillowcase
+                data:
+                  value: 0
+
+          - conditions:
+              - condition: trigger
+                id:
+                  - semyons_bed_sheets_change
+            sequence:
+              - action: input_number.set_value
+                target:
+                  entity_id: input_number.semyons_bed_sheets
+                data:
+                  value: 0
+          - conditions:
+              - condition: trigger
+                id:
+                  - irynas_bed_sheets_change
+            sequence:
+              - action: input_number.set_value
+                target:
+                  entity_id: input_number.irynas_bed_sheets
+                data:
+                  value: 0

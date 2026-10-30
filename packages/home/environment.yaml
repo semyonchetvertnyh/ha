@@ -1,0 +1,57 @@
+template:
+  - sensor:
+      - name: Lights On
+        unique_id: lights_on
+        state: >
+          {% set exclusions = [
+            'light.touchkio_wallpanel_display',
+            'light.internet_entryway_extender_status_light',
+            'light.internet_living_room_router_status_light',
+            'light.internet_irynas_bedroom_router_status_light',
+          ] %}
+          {{ states.light
+            | rejectattr('entity_id', 'in', exclusions)
+            | rejectattr('entity_id', 'is_hidden_entity')
+            | rejectattr('attributes.hue_type', 'eq', 'room')
+            | selectattr('state', 'eq', 'on')
+            | list
+            | count }}
+        icon: >
+          {% if states('sensor.lights_on') | int(0) > 0 %}
+            mdi:lightbulb-group
+          {% else %}
+            mdi:lightbulb-group-off
+          {% endif %}
+        attributes:
+          on: >
+            {% set exclusions = [
+              'light.touchkio_wallpanel_display',
+              'light.internet_entryway_extender_status_light',
+              'light.internet_living_room_router_status_light',
+              'light.internet_irynas_bedroom_router_status_light',
+            ] %}
+            {{ states.light
+              | rejectattr('entity_id', 'in', exclusions)
+              | rejectattr('entity_id', 'is_hidden_entity')
+              | rejectattr('attributes.hue_type', 'eq', 'room')
+              | selectattr('state', 'eq', 'on')
+              | map(attribute='entity_id')
+              | list }}
+
+      - name: Climates On
+        unique_id: climates_on
+        state: >
+          {% set exclusions = [] %}
+          {{ states.climate
+            | rejectattr('entity_id', 'in', exclusions)
+            | rejectattr('entity_id', 'is_hidden_entity')
+            | rejectattr('state', 'eq', 'off')
+            | rejectattr('state', 'eq', 'unavailable')
+            | list
+            | count }}
+        icon: >
+          {% if states('sensor.climates_on') | int(0) > 0 %}
+            mdi:hvac
+          {% else %}
+            mdi:hvac-off
+          {% endif %}

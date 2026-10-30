@@ -1,0 +1,78 @@
+blueprint:
+  name: Aqara Switch - Light control
+  description: >
+    Blueprint for controlling a dimmable light with an Aqara switch.
+
+
+    The flow:
+      - Single press - toggles the light on and off
+      - Double press - sets maximum brightness and a cool color
+      - Hold - sets low brightness and a warm color
+  domain: automation
+
+  input:
+    target_light:
+      name: Target light
+      description: Light to control (have to support brightness and color temperature).
+      selector:
+        entity:
+          filter:
+            - domain: light
+          multiple: false
+
+    action_event:
+      name: Action
+      description: Entity that provides switch actions (event-based entity).
+      selector:
+        entity:
+          filter:
+            - domain: event
+              integration: mqtt
+          multiple: false
+
+mode: single
+
+variables:
+  light_entity: !input target_light
+
+triggers:
+  - trigger: state
+    entity_id: !input action_event
+    not_from: unavailable
+
+actions:
+  - choose:
+      - alias: If single pressed, toggle the light
+        conditions:
+          - condition: template
+            value_template: "{{ trigger.to_state.attributes.event_type == 'single' }}"
+        sequence:
+          - action: light.toggle
+            target:
+              entity_id: "{{ light_entity }}"
+
+      - alias: If double pressed, set maximum brightness and a cool color
+        conditions:
+          - condition: template
+            value_template: "{{ trigger.to_state.attributes.event_type == 'double' }}"
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: "{{ light_entity }}"
+            data:
+              kelvin: "{{ state_attr(light_entity, 'max_color_temp_kelvin') }}"
+              brightness_pct: 100
+              # transition: 1
+      
+      - alias: If held, set low brightness and a warm color
+        conditions:
+          - condition: template
+            value_template: "{{ trigger.to_state.attributes.event_type == 'hold' }}"
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: "{{ light_entity }}"
+            data:
+              kelvin: "{{ state_attr(light_entity, 'min_color_temp_kelvin') }}"
+              brightness_pct: 1
+              # transition: 1

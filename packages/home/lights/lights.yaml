@@ -1,0 +1,175 @@
+input_select:
+  kitchen_lights:
+    name: "Kitchen Lights"
+    icon: mdi:lightbulb-auto
+    options: [idle, auto, blocked]
+
+  living_room_dining_area_lights:
+    name: "Living Room Dining Area Lights"
+    icon: mdi:lightbulb-auto
+    options: [idle, auto, blocked]
+
+  living_room_tv_area_lights:
+    name: "Living Room TV Area Lights"
+    icon: mdi:lightbulb-auto
+    options: [idle, auto, blocked]
+
+  irynas_bedroom_lights:
+    name: "Iryna’s Bedroom Lights"
+    icon: mdi:lightbulb-auto
+    options: [idle, auto, blocked]
+
+  semyons_bedroom_lights:
+    name: "Semyon’s Bedroom Lights"
+    icon: mdi:lightbulb-auto
+    options: [idle, auto, blocked]
+
+  desk_lights:
+    name: "Desk Lights"
+    icon: mdi:lightbulb-auto
+    options: [idle, auto, blocked]
+
+  balcony_lights:
+    name: "Balcony Lights"
+    icon: mdi:lightbulb-auto
+    options: [idle, auto, blocked]
+
+automation:
+
+  - alias: Lights - Kitchen
+    id: lights_kitchen
+    use_blueprint:
+      path: semyonchetvertnyh/lights_presence.yaml
+      input:
+        allowed_sensor: binary_sensor.lights_allowed
+        presence_entity: binary_sensor.kitchen_occupancy
+        light_target:
+          - light.kitchen_dining_table
+          - light.kitchen_countertop
+        state_helper: input_select.kitchen_lights
+        dark_sensor: binary_sensor.kitchen_bright
+        self_automation: automation.lights_kitchen
+
+  - alias: Lights - Living Room Dining Area
+    id: lights_living_room_dining_area
+    use_blueprint:
+      path: semyonchetvertnyh/lights_presence.yaml
+      input:
+        allowed_sensor: binary_sensor.lights_allowed
+        presence_entity: binary_sensor.living_room_dining_area_occupancy
+        light_target:
+          - light.living_room_dining_area
+        state_helper: input_select.living_room_dining_area_lights
+        dark_sensor: binary_sensor.living_room_bright
+        self_automation: automation.lights_living_room_dining_area
+
+  - alias: Lights - Living Room TV Area
+    id: lights_living_room_tv_area
+    use_blueprint:
+      path: semyonchetvertnyh/lights_presence.yaml
+      input:
+        allowed_sensor: binary_sensor.lights_allowed
+        presence_entity: binary_sensor.living_room_tv_area_occupancy
+        light_target:
+          - light.living_room_tv_area
+        state_helper: input_select.living_room_tv_area_lights
+        dark_sensor: binary_sensor.living_room_bright
+        self_automation: automation.lights_living_room_tv_area
+
+  - alias: Lights - Iryna’s Bedroom
+    id: lights_irynas_bedroom
+    use_blueprint:
+      path: semyonchetvertnyh/lights_presence.yaml
+      input:
+        allowed_sensor: binary_sensor.lights_allowed
+        presence_entity: binary_sensor.irynas_bedroom_occupancy
+        light_target:
+          - light.irynas_bedroom_ceiling
+          - light.irynas_bedroom_speakers_glow
+          - light.irynas_bedside_lamp
+        state_helper: input_select.irynas_bedroom_lights
+        dark_sensor: binary_sensor.irynas_bedroom_bright
+        block_entities:
+          - binary_sensor.iryna_asleep
+        self_automation: automation.lights_irynas_bedroom
+
+  - alias: Lights - Semyon’s Bedroom
+    id: lights_semyons_bedroom
+    use_blueprint:
+      path: semyonchetvertnyh/lights_presence.yaml
+      input:
+        allowed_sensor: binary_sensor.lights_allowed
+        presence_entity: binary_sensor.semyons_bedroom_occupancy
+        light_target:
+          - light.semyons_bedroom
+        state_helper: input_select.semyons_bedroom_lights
+        dark_sensor: binary_sensor.semyons_bedroom_bright
+        block_entities:
+          - binary_sensor.semyon_asleep
+        self_automation: automation.lights_semyons_bedroom
+
+  - alias: Lights - Desk
+    id: lights_desk
+    use_blueprint:
+      path: semyonchetvertnyh/lights_presence.yaml
+      input:
+        allowed_sensor: binary_sensor.lights_allowed
+        presence_entity: binary_sensor.desk_occupancy
+        light_target:
+          - light.desk_monitor_bar
+        state_helper: input_select.desk_lights
+        dark_sensor: binary_sensor.semyons_bedroom_bright
+        block_entities:
+          - binary_sensor.semyon_asleep
+        self_automation: automation.lights_desk
+        arrive_debounce:
+          seconds: 10
+
+  - alias: Lights - Balcony
+    id: lights_balcony
+    use_blueprint:
+      path: semyonchetvertnyh/lights_presence.yaml
+      input:
+        allowed_sensor: binary_sensor.lights_allowed
+        presence_entity: binary_sensor.balcony_occupancy
+        light_target:
+          - light.balcony_downlight
+          - light.balcony_floor_lamp
+        state_helper: input_select.balcony_lights
+        dark_sensor: binary_sensor.outdoor_bright
+        self_automation: automation.lights_balcony
+
+  - alias: Lights - Bathroom
+    id: lights_bathroom
+    use_blueprint:
+      path: homeassistant/motion_light.yaml
+      input:
+        motion_entity: binary_sensor.bathroom_occupancy
+        light_target:
+          entity_id: light.bathroom
+        no_motion_wait: 120
+
+  - alias: Lights - Entryway
+    id: lights_entryway
+    use_blueprint:
+      path: semyonchetvertnyh/lights_motion.yaml
+      input:
+        motion_entity: binary_sensor.entryway_presence
+        light_target:
+          entity_id: light.entryway
+        no_motion_wait: 0
+        block_entities:
+          - binary_sensor.outdoor_bright
+          - binary_sensor.residents_asleep
+
+  - alias: Lights - Laundry
+    id: lights_laundry
+    use_blueprint:
+      path: semyonchetvertnyh/lights_motion.yaml
+      input:
+        motion_entity: binary_sensor.laundry_presence
+        light_target:
+          entity_id: light.laundry
+        no_motion_wait: 240
+        block_entities:
+          - binary_sensor.outdoor_bright

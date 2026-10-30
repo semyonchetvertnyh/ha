@@ -1,0 +1,88 @@
+timer:
+  water_heater:
+    name: Water Heater
+    icon: mdi:water-boiler
+    duration: "01:30:00"
+    restore: true
+
+input_number:
+  water_heater_duration:
+    name: Water Heater Duration
+    min: 600
+    max: 7200
+    step: 300
+    unit_of_measurement: s
+    icon: mdi:water-boiler
+
+input_datetime:
+  water_heating_once_time:
+    name: Water Heating Once Time
+    icon: mdi:clock-time-five
+    has_date: false
+    has_time: true
+
+template:
+  - sensor:
+      - name: Water Heater End Time
+        unique_id: water_heater_end_time
+        device_class: timestamp
+        state: "{{ state_attr('timer.water_heater', 'finishes_at') }}"
+        availability: "{{ is_state('timer.water_heater', 'active') }}"
+
+automation:
+  - alias: Timer - Water Heater
+    id: timer_water_heater
+    use_blueprint:
+      path: semyonchetvertnyh/timer_sync_to_switch.yaml
+      input:
+        timer: timer.water_heater
+        switch: switch.water_heater
+        duration: input_number.water_heater_duration
+        turn_off_when_timer_finished: true
+
+  - alias: Water Heating - Once
+    id: water_heating_once
+    description: >
+      This automation is useful when you need to turn on water heater one
+      time at specific time (e.g. before a trip).
+    mode: single
+    trigger:
+      - trigger: time
+        at: input_datetime.water_heating_once_time
+    actions:
+      - action: switch.turn_on
+        target:
+          entity_id: switch.water_heater
+      - action: automation.turn_off
+        target:
+          entity_id: automation.water_heating_once
+        data:
+          stop_actions: false
+
+  - alias: Water Heating - Auto-off
+    id: water_heating_auto_off
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id:
+          - sensor.water_heater_power
+        below: 10
+        for:
+          minutes: 6
+    actions:
+      - action: switch.turn_off
+        target:
+          entity_id: switch.water_heater
+
+rest:
+  - resource: "https://cyprus-water.appspot.com/api/percentages"
+    scan_interval: 21600 # 6 часов
+    sensor:
+      - name: "Water Dam Level"
+        unique_id: water_dam_level
+        value_template: >
+          {{ value_json['damNamesToPercentage']['Kouris'] | float(0) | round(3) * 100 }}
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:water-percent
+

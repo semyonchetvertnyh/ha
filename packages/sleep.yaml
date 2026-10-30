@@ -1,0 +1,261 @@
+# Сон жильцов - фаза 1.
+# Схема и требования: Claude Docs "Фазы суток в Home Assistant".
+#
+# Кто спит:
+#   binary_sensor.semyon_asleep   - Семён спит
+#   binary_sensor.iryna_asleep    - Ира спит
+#   binary_sensor.residents_asleep - спят все, кто дома
+# Рамки (время живёт только здесь, автоматизации на них не смотрят):
+#   binary_sensor.bedtime_window  - 20:00-04:00, только в ней сигнал "лёг" считается
+#   binary_sensor.wakeup_window   - 04:00-11:00, только в ней сигнал "встал" считается
+# Страховки: в 04:00 все, кто дома, считаются спящими; в 11:00 - проснувшимися.
+
+binary_sensor:
+  - platform: tod
+    name: Bedtime Window
+    unique_id: bedtime_window
+    after: "20:00:00"
+    before: "04:00:00"
+
+  - platform: tod
+    name: Wakeup Window
+    unique_id: wakeup_window
+    after: "04:00:00"
+    before: "11:00:00"
+
+template:
+  # Семён
+  # Лёг: весь свет в спальне выключен и он в спальне - 5 минут подряд, в вечерней рамке.
+  # Встал: открыл штору в спальне или включил кофеварку руками, в утренней рамке.
+  - triggers:
+      - trigger: template
+        value_template: >
+          {{ is_state('light.semyons_bedroom', 'off')
+             and is_state('binary_sensor.semyons_bedroom_occupancy', 'on') }}
+        for: "00:05:00"
+        id: bed
+      - trigger: state
+        entity_id: cover.semyons_bedroom_shade
+        from: "closed"
+        to: ["opening", "open"]
+        id: up
+      - trigger: state
+        entity_id: switch.coffeemaker
+        from: "off"
+        to: "on"
+        id: coffee
+      - trigger: state
+        entity_id: binary_sensor.bedtime_window
+        from: "on"
+        to: "off"
+        id: bed_fallback
+      - trigger: state
+        entity_id: binary_sensor.wakeup_window
+        from: "on"
+        to: "off"
+        id: up_fallback
+      - trigger: state
+        entity_id: person.semyon
+        id: presence
+    binary_sensor:
+      - name: Semyon Asleep
+        unique_id: semyon_asleep
+        icon: mdi:sleep
+        state: >
+          {% set was = this.state == 'on' %}
+          {% set bed = is_state('binary_sensor.bedtime_window', 'on') %}
+          {% set wake = is_state('binary_sensor.wakeup_window', 'on') %}
+          {% if not is_state('person.semyon', 'home') %}
+            false
+          {% elif trigger.id == 'bed' %}
+            {{ bed or was }}
+          {% elif trigger.id == 'up' %}
+            {{ was and not wake }}
+          {% elif trigger.id == 'coffee' %}
+            {# кофеварку, включённую автоматизацией (Coffeemaker Once), не считаем #}
+            {{ was and not (wake and trigger.to_state.context.parent_id is none) }}
+          {% elif trigger.id == 'bed_fallback' %}
+            true
+          {% elif trigger.id == 'up_fallback' %}
+            false
+          {% else %}
+            {{ was }}
+          {% endif %}
+
+  # Ира
+  # Легла: погас Speakers Glow, горевший ночником (яркость до 15%), в вечерней рамке.
+  #   Ночные кормления (Glow вкл/выкл) сон не сбрасывают.
+  # Встала: открыла штору в спальне, в утренней рамке.
+  - triggers:
+      - trigger: state
+        entity_id: light.irynas_bedroom_speakers_glow
+        from: "on"
+        to: "off"
+        id: bed
+      - trigger: state
+        entity_id: cover.irynas_bedroom_shade
+        from: "closed"
+        to: ["opening", "open"]
+        id: up
+      - trigger: state
+        entity_id: binary_sensor.bedtime_window
+        from: "on"
+        to: "off"
+        id: bed_fallback
+      - trigger: state
+        entity_id: binary_sensor.wakeup_window
+        from: "on"
+        to: "off"
+        id: up_fallback
+      - trigger: state
+        entity_id: person.iryna
+        id: presence
+    binary_sensor:
+      - name: Iryna Asleep
+        unique_id: iryna_asleep
+        icon: mdi:sleep
+        state: >
+          {% set was = this.state == 'on' %}
+          {% set bed = is_state('binary_sensor.bedtime_window', 'on') %}
+          {% set wake = is_state('binary_sensor.wakeup_window', 'on') %}
+          {% if not is_state('person.iryna', 'home') %}
+            false
+          {% elif trigger.id == 'bed' %}
+            {% set dim = trigger.from_state.attributes.brightness | int(255) <= 38 %}
+            {{ (bed and dim) or was }}
+          {% elif trigger.id == 'up' %}
+            {{ was and not wake }}
+          {% elif trigger.id == 'bed_fallback' %}
+            true
+          {% elif trigger.id == 'up_fallback' %}
+            false
+          {% else %}
+            {{ was }}
+          {% endif %}
+
+  # Спят все, кто дома. Никого нет дома - off.
+  # Заменяет старое определение из residents.yaml (там было = binary_sensor.night).
+  - binary_sensor:
+      - name: Residents Asleep
+        unique_id: residents_asleep
+        icon: mdi:sleep
+        state: >
+          {% set s = is_state('person.semyon', 'home') %}
+          {% set i = is_state('person.iryna', 'home') %}
+          {{ (s or i)
+             and (not s or is_state('binary_sensor.semyon_asleep', 'on'))
+             and (not i or is_state('binary_sensor.iryna_asleep', 'on')) }}
+
+automation:
+  # Все, кто дома, уснули - ночной режим AL в общих зонах (экземпляр Home).
+  # Заменяет ветку "night" автоматизации "Adaptive Lighting Sleep Mode".
+  - alias: Sleep - Residents Asleep
+    id: sleep_residents_asleep
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.residents_asleep
+        from: "off"
+        to: "on"
+    actions:
+      # если кто-то в ванной - сохранить текущий свет и вернуть его после включения Sleep Mode
+      - if:
+          - condition: state
+            entity_id: binary_sensor.bathroom_occupancy
+            state: "on"
+        then:
+          - action: scene.create
+            data:
+              scene_id: bathroom_downlights_before
+              snapshot_entities:
+                - light.bathroom
+      - action: switch.turn_on
+        target:
+          entity_id: switch.adaptive_lighting_sleep_mode
+      - if:
+          - condition: state
+            entity_id: binary_sensor.bathroom_occupancy
+            state: "on"
+        then:
+          - action: scene.turn_on
+            target:
+              entity_id: scene.bathroom_downlights_before
+
+  # Первый проснувшийся - утро в общих зонах. Спальня второго не трогается.
+  # Заменяет ветку "morning" автоматизации "Adaptive Lighting Sleep Mode".
+  - alias: Sleep - First Wake
+    id: sleep_first_wake
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.residents_asleep
+        from: "on"
+        to: "off"
+    conditions:
+      # не срабатывать, если "все спят" погасло ночью из-за того, что кто-то пришёл домой
+      - condition: state
+        entity_id: binary_sensor.wakeup_window
+        state: "on"
+    actions:
+      - action: switch.turn_off
+        target:
+          entity_id: switch.adaptive_lighting_sleep_mode
+      - action: cover.open_cover
+        target:
+          entity_id: cover.living_room_shade
+
+  # Семён встал по кофеварке, а штора в его спальне закрыта - открыть её.
+  - alias: Sleep - Semyon Up by Coffee
+    id: sleep_semyon_up_by_coffee
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.semyon_asleep
+        from: "on"
+        to: "off"
+    conditions:
+      - condition: state
+        entity_id: switch.coffeemaker
+        state: "on"
+      - condition: template
+        value_template: >
+          {{ now() - states.switch.coffeemaker.last_changed < timedelta(minutes=1) }}
+      - condition: state
+        entity_id: cover.semyons_bedroom_shade
+        state: "closed"
+    actions:
+      - action: cover.open_cover
+        target:
+          entity_id: cover.semyons_bedroom_shade
+
+  # Ира легла - ночной режим AL в её спальне (экземпляр Iryna's Bedroom).
+  - alias: Sleep - Iryna Asleep
+    id: sleep_iryna_asleep
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.iryna_asleep
+        from: "off"
+        to: "on"
+    actions:
+      - action: switch.turn_on
+        target:
+          entity_id: switch.adaptive_lighting_iryna_s_bedroom_sleep_mode
+
+  # Ира встала - выключить ночной режим AL в её спальне и её прикроватную лампу.
+  # Заменяет light.turn_off из ветки "morning" автоматизации "Adaptive Lighting Sleep Mode".
+  - alias: Sleep - Iryna Up
+    id: sleep_iryna_up
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.iryna_asleep
+        from: "on"
+        to: "off"
+    actions:
+      - action: switch.turn_off
+        target:
+          entity_id: switch.adaptive_lighting_iryna_s_bedroom_sleep_mode
+      - action: light.turn_off
+        target:
+          entity_id: light.irynas_bedside_lamp

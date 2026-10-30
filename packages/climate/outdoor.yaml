@@ -1,0 +1,26 @@
+template:
+  - binary_sensor:
+      - name: "Cold Season"
+        unique_id: cold_season
+        state: >
+          {{ now().month in [11, 12, 1, 2, 3] }}
+        icon: mdi:snowflake
+
+      - name: "Warm Season"
+        unique_id: warm_season
+        state: >
+          {{ now().month in [4, 5, 6, 7, 8, 9, 10] }}
+        icon: mdi:white-balance-sunny
+
+binary_sensor:
+  - platform: meteoalarm
+    name: Meteoalarm
+    country: "cyprus"
+    province: "Cyprus"
+
+# sensor.outdoor_carbon_monoxide = 2.8
+# sensor.outdoor_nitrogen_dioxide = 7.1
+# sensor.outdoor_ozone = 29.7
+# sensor.outdoor_pm10 = 28
+# sensor.outdoor_pm2_5 = 26
+# sensor.outdoor_sulphur_dioxide = 0.8

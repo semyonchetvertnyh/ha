@@ -1,0 +1,33 @@
+# climate:
+#   - name: "Iryna’s Bedroom Heater"
+#     unique_id: irynas_bedroom_heater
+#     heater: switch.irynas_bedroom_heater
+#     target_sensor: sensor.irynas_bedroom_temperature
+#     platform: generic_thermostat
+#     min_temp: 17
+#     max_temp: 28
+#     target_temp: 22
+#     cold_tolerance: 1.5
+#     hot_tolerance: 0
+#     precision: 0.5
+#     initial_hvac_mode: "off"
+
+#   - name: "Semyon’s Bedroom Heater"
+#     unique_id: semyons_bedroom_heater
+#     heater: switch.semyons_bedroom_heater
+#     target_sensor: sensor.semyons_bedroom_temperature
+#     platform: generic_thermostat
+#     min_temp: 17
+#     max_temp: 28
+#     target_temp: 22
+#     cold_tolerance: 1.5
+#     hot_tolerance: 0
+#     precision: 0.5
+#     initial_hvac_mode: "off"
+
+# homeassistant:
+#   customize:
+#     climate.irynas_bedroom_heater:
+#       icon: mdi:radiator
+#     climate.semyons_bedroom_heater:
+#       icon: mdi:radiator

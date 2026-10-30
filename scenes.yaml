@@ -1,0 +1,49 @@
+- id: leave_home
+  name: Leave Home
+  icon: mdi:location-exit
+  entities:
+
+    switch.iron: "off"
+    # switch.coffeemaker: "off"
+    # switch.water_heater: "off"
+
+    # TVs
+    media_player.living_room_tv: "off"
+    media_player.irynas_bedroom_tv: "off"
+
+    # Speakers
+    media_player.kitchen_homepod: "idle"
+    media_player.irynas_bedroom_speakers: "idle"
+    media_player.semyons_bedroom_speakers: "idle"
+    media_player.bathroom_speaker: "idle"
+
+    # ACs
+    climate.living_room_ac: "off"
+    climate.irynas_bedroom_ac: "off"
+    climate.semyons_bedroom_ac: "off"
+
+    # Heaters
+    # climate.irynas_bedroom_heater: "off"
+    # climate.semyons_bedroom_heater: "off"
+
+    # Climate Accessories
+    fan.semyons_bedroom_air_purifier: "off"
+    humidifier.semyons_bedroom_oil_diffuser: "off"
+
+    # Lights
+    # light.entryway: "off"
+    light.kitchen: "off"
+    light.living_room: "off"
+    light.hallway: "off"
+    light.irynas_bedroom: "off"
+    light.semyons_bedroom: "off"
+    light.bathroom: "off"
+    light.balcony: "off"
+    light.laundry: "off"
+
+    light.kitchen_ceiling: "off"
+    light.irynas_bedside_lamp: "off"
+    light.semyons_bedroom_oil_diffuser: "off"
+    light.desk_monitor_bar: "off"
+
+    light.christmas_tree: "off"

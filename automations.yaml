@@ -1,0 +1,1928 @@
+- id: '1759759807213'
+  alias: Switch - Bathroom
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - event.hallway_switch_action
+    not_from: unavailable
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.to_state.attributes.event_type == ''single_left''
+          }}'
+      sequence:
+      - action: light.toggle
+        target:
+          entity_id: light.bathroom
+        data: {}
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.to_state.attributes.event_type == ''double_left''
+          }}'
+      sequence:
+      - action: light.turn_on
+        target:
+          entity_id: light.bathroom
+        data:
+          brightness_pct: 80
+          transition: 2
+  mode: restart
+- id: '1759761934063'
+  alias: Adaptive Lighting Sleep Mode
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.morning
+    id: morning
+    to: 'on'
+  - trigger: state
+    entity_id:
+    - binary_sensor.night
+    id: night
+    to: 'on'
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - morning
+      sequence:
+      - action: light.turn_off
+        metadata: {}
+        target:
+          entity_id: light.irynas_bedside_lamp
+        data: {}
+      - action: switch.turn_off
+        target:
+          entity_id:
+          - switch.adaptive_lighting_sleep_mode
+        data: {}
+    - conditions:
+      - condition: trigger
+        id:
+        - night
+      sequence:
+      - if:
+        - condition: state
+          entity_id: binary_sensor.bathroom_occupancy
+          state:
+          - 'on'
+        then:
+        - action: scene.create
+          data:
+            scene_id: bathroom_downlights_before
+            snapshot_entities:
+            - light.bathroom
+      - action: switch.turn_on
+        target:
+          entity_id:
+          - switch.adaptive_lighting_sleep_mode
+        data: {}
+      - if:
+        - condition: state
+          entity_id: binary_sensor.bathroom_occupancy
+          state:
+          - 'on'
+        then:
+        - action: scene.turn_on
+          target:
+            entity_id: scene.bathroom_downlights_before
+          data: {}
+        - action: scene.reload
+          data: {}
+  mode: single
+- id: '1759854006174'
+  alias: Switch - Living Room
+  description: ''
+  triggers:
+  - trigger: mqtt
+    options:
+      topic: zigbee2mqtt/Living Room Switch/action
+      payload: single_button_1
+    id: single_button_1
+  - trigger: mqtt
+    options:
+      topic: zigbee2mqtt/Living Room Switch/action
+      payload: single_button_2
+    id: single_button_2
+  - trigger: mqtt
+    options:
+      topic: zigbee2mqtt/Living Room Switch/action
+      payload: single_button_3
+    id: single_button_3
+  - trigger: mqtt
+    options:
+      topic: zigbee2mqtt/Living Room Switch/action
+      payload: single_button_4
+    id: single_button_4
+  - trigger: state
+    entity_id: event.living_room_switch_action
+    not_from: unavailable
+    id: action
+    enabled: false
+  - trigger: time_pattern
+    minutes: /15
+    id: time
+    enabled: false
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - action
+        - single_button_1
+      - condition: template
+        value_template: '{{ trigger.to_state.attributes.event_type == ''button_1_single''
+          }}'
+        enabled: false
+      sequence:
+      - action: light.toggle
+        target:
+          entity_id: light.living_room_dining_area
+      alias: If button 1 was pressed
+    - conditions:
+      - condition: trigger
+        id:
+        - action
+        - single_button_2
+      - condition: template
+        value_template: '{{ trigger.to_state.attributes.event_type == ''button_2_single''
+          }}'
+        enabled: false
+      sequence:
+      - action: light.toggle
+        target:
+          entity_id: light.kitchen_ceiling
+        data: {}
+      alias: If button 2 was pressed
+    - conditions:
+      - condition: trigger
+        id:
+        - action
+        - single_button_3
+      - condition: template
+        value_template: '{{ trigger.to_state.attributes.event_type == ''button_3_single''
+          }}'
+        enabled: false
+      sequence:
+      - action: light.toggle
+        target:
+          entity_id: light.living_room_tv_area
+      alias: If button 3 was pressed
+    - conditions:
+      - condition: trigger
+        id:
+        - action
+        - single_button_4
+      - condition: template
+        value_template: '{{ trigger.to_state.attributes.event_type == ''button_4_single''
+          }}'
+        enabled: false
+      sequence:
+      - action: light.toggle
+        target:
+          entity_id:
+          - light.living_room_spotlight
+      alias: If button 4 was pressed
+    - conditions:
+      - condition: trigger
+        id:
+        - time
+      sequence:
+      - variables:
+          screen_saver_style: '{{ [''digital_clock'', ''weather_conditions'', ''indoor_environment'']
+            | random }}
+
+            '
+          is_day: '{{ is_state(''sun.sun'', ''above_horizon'') }}'
+          weather: '{{ states(''weather.forecast_home'') }}'
+          weather_condition: "{% set m = {\n  'clear-night': 'clear',\n  'partlycloudy':
+            'partly_cloudy',\n  'cloudy': 'overcast',\n  'fog': 'foggy',\n  'windy':
+            'windy',\n  'windy-variant': 'blustery',\n  'rainy': 'moderate_rain',\n
+            \ 'pouring': 'heavy_storm',\n  'hail': 'sleet',\n  'snowy-rainy': 'sleet',\n
+            \ 'snowy': 'moderate_snow',\n  'lightning': 'storm',\n  'lightning-rainy':
+            'severe_storm',\n  'exceptional': 'hurricane'\n} %}\n\n{% if weather ==
+            'sunny' %}\n  {{ 'sunny' if is_day else 'clear' }}\n{% elif weather in
+            ['unknown', 'unavailable', 'none', ''] %}\n  unknown\n{% else %}\n  {{
+            m.get(weather, 'unknown') }}\n{% endif %}"
+      - parallel:
+        - action: mqtt.publish
+          data:
+            topic: zigbee2mqtt/0x54ef44100117d96a/set
+            payload: "{\n  \"screen_saver_style\": \"{{ screen_saver_style }}\"\n}"
+            retain: false
+        - action: mqtt.publish
+          data:
+            topic: zigbee2mqtt/0x54ef44100117d96a/set
+            payload: "{\n  \"weather_condition\": \"{{ weather_condition }}\"\n}"
+            retain: false
+        - action: mqtt.publish
+          data:
+            topic: zigbee2mqtt/0x54ef44100117d96a/set
+            payload: "{\n  \"weather_temperature\": {{ state_attr('weather.forecast_home',
+              'temperature') | int(0) }}\n}"
+            retain: false
+        - action: mqtt.publish
+          data:
+            topic: zigbee2mqtt/0x54ef44100117d96a/set
+            payload: "{\n  \"sensor_temperature\": {{ states('sensor.living_room_temperature')
+              | int(0) }}\n}"
+            retain: false
+  mode: parallel
+  max: 10
+- id: '1760422884917'
+  alias: Notifications - Washer
+  description: ''
+  triggers:
+  - trigger: event
+    event_type: timer.finished
+    event_data:
+      entity_id: timer.washer
+    enabled: false
+  - trigger: state
+    entity_id: binary_sensor.washer
+    from: 'on'
+    to: 'off'
+    enabled: true
+  conditions: []
+  actions:
+  - action: script.notify
+    metadata: {}
+    data:
+      description: Стиралка завершила цикл стирки. Можно перекладывать постиранное
+        в сушилку.
+      persons:
+      - person.semyon
+      - person.iryna
+      announce: true
+  mode: single
+- id: '1760424916554'
+  alias: Notifications - Dishwasher
+  description: ''
+  triggers:
+  - trigger: event
+    event_type: timer.finished
+    event_data:
+      entity_id: timer.dishwasher
+  conditions: []
+  actions:
+  - action: script.notify
+    metadata: {}
+    data:
+      description: Посудомойка завершила цикл.
+      persons:
+      - person.semyon
+      - person.iryna
+      announce: true
+  mode: single
+- id: '1760424942896'
+  alias: Notifications - Dryer
+  description: ''
+  triggers:
+  - trigger: event
+    event_type: timer.finished
+    event_data:
+      entity_id: timer.dryer
+    enabled: false
+  - trigger: state
+    entity_id: binary_sensor.dryer
+    from: 'on'
+    to: 'off'
+    enabled: true
+  conditions: []
+  actions:
+  - action: script.notify
+    metadata: {}
+    data:
+      description: Сушилка завершила цикл.
+      persons:
+      - person.semyon
+      - person.iryna
+      announce: true
+  mode: single
+- id: '1760436204228'
+  alias: Notifications - Bathroom Humidity
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.bathroom_humidity
+    from: 'off'
+    to: 'on'
+  conditions:
+  - condition: state
+    entity_id: binary_sensor.bathroom_window
+    state: 'off'
+  actions:
+  - action: script.notify
+    metadata: {}
+    data:
+      description: В ванной стало очень влажно. Видимо, кто-то принимает душ. Рекомендуй
+        открыть окно, чтобы проветрить.
+      persons:
+      - person.semyon
+      - person.iryna
+  - wait_for_trigger:
+    - trigger: state
+      entity_id:
+      - binary_sensor.bathroom_window
+      from: 'off'
+      to: 'on'
+    timeout:
+      hours: 1
+      minutes: 0
+      seconds: 0
+      milliseconds: 0
+    continue_on_timeout: false
+  - action: script.notify
+    metadata: {}
+    data:
+      description: Ты ранее рекомендовал открыть окно в ванной, чтобы проветрить,
+        потому что там стало слишком влажно. Его открыли. Похвали!
+      persons:
+      - person.semyon
+      - person.iryna
+  mode: single
+- id: '1760453651233'
+  alias: Entryway Lock
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - lock.entryway
+    to:
+    - unlocked
+    - unknown
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 30
+  - event_type: timer.finished
+    event_data:
+      entity_id: timer.entryway_lock
+    trigger: event
+  conditions: []
+  actions:
+  - if:
+    - condition: state
+      entity_id: binary_sensor.entryway_door
+      state: 'off'
+    then:
+    - target:
+        entity_id: lock.entryway
+      action: lock.lock
+    - target:
+        entity_id: timer.entryway_lock
+      action: timer.cancel
+    else:
+    - target:
+        entity_id: timer.entryway_lock
+      action: timer.start
+      data:
+        duration: 00:01:30
+  mode: single
+- id: '1760457882183'
+  alias: Shades
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.morning
+    to: 'on'
+    id: morning
+    enabled: false
+  - id: dusk
+    trigger: time
+    at: sensor.sun_next_dusk
+  - trigger: state
+    entity_id:
+    - binary_sensor.night
+    to: 'on'
+    id: night
+  - trigger: state
+    entity_id: zone.home
+    to: '0'
+    id: leaving
+    enabled: false
+  - trigger: numeric_state
+    entity_id: zone.home
+    above: 0
+    id: approaching
+    enabled: false
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - approaching
+      - condition: sun.is_up
+        options: {}
+      sequence:
+      - action: cover.open_cover
+        target:
+          entity_id:
+          - cover.living_room_shade
+          - cover.semyons_bedroom_shade
+          - cover.irynas_bedroom_shade
+        data: {}
+    - conditions:
+      - condition: trigger
+        id:
+        - dusk
+        - night
+        - leaving
+      sequence:
+      - action: cover.close_cover
+        target:
+          entity_id:
+          - cover.living_room_shade
+          - cover.semyons_bedroom_shade
+          - cover.irynas_bedroom_shade
+        data: {}
+        enabled: true
+    - conditions:
+      - condition: trigger
+        id:
+        - morning
+      sequence:
+      - action: cover.open_cover
+        target:
+          entity_id:
+          - cover.living_room_shade
+        data: {}
+  mode: single
+- id: '1760812707069'
+  alias: Notifications - Vacuum
+  description: ''
+  triggers:
+  - trigger: event
+    event_type: timer.finished
+    event_data:
+      entity_id: timer.vacuum
+  conditions:
+  - condition: not
+    conditions:
+    - condition: state
+      entity_id: vacuum.bob
+      state: cleaning
+    alias: If Bob is not Cleaning
+  actions:
+  - if:
+    - alias: If Mode is Mop
+      condition: or
+      conditions:
+      - condition: state
+        entity_id: select.vacuum_mode
+        state: Mop
+      - condition: state
+        entity_id: select.vacuum_mode
+        state: Sweep And Mop
+      - condition: state
+        entity_id: select.vacuum_mode
+        state: Sweep Then Mop
+    then:
+    - action: script.notify
+      metadata: {}
+      data:
+        persons:
+        - person.semyon
+        - person.iryna
+        description: Робот-пылесос Боб закончил влажную уборку.
+        announce: true
+    else:
+    - action: script.notify
+      metadata: {}
+      data:
+        persons:
+        - person.semyon
+        - person.iryna
+        description: Робот-пылесос Боб закончил уборку.
+        announce: true
+  mode: single
+- id: '1761231836888'
+  alias: Iryna’s Bedroom Air Purifier
+  description: Днём - по присутствию в комнате. Ночью (с binary_sensor.night до 08:00)
+    работает без перерывов, если Ира дома, экран выключен. Утром (binary_sensor.morning)
+    экран включается. 08:00 - временно вручную, пока не разобрались с night/morning/quiet_hours.
+  triggers:
+  - id: presence
+    options:
+      for: 00:03:00
+    target:
+      entity_id: binary_sensor.irynas_bedroom_occupancy
+    trigger: occupancy.detected
+  - id: absence
+    options:
+      for: 00:15:00
+    target:
+      entity_id: binary_sensor.irynas_bedroom_occupancy
+    trigger: occupancy.cleared
+  - entity_id: person.iryna
+    id: iryna_home
+    to: home
+    trigger: state
+  - entity_id: binary_sensor.morning
+    id: morning
+    to: 'on'
+    trigger: state
+  - entity_id: binary_sensor.night
+    id: night
+    to: 'on'
+    trigger: state
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: night
+      sequence:
+      - if:
+        - condition: state
+          entity_id: person.iryna
+          state: home
+        then:
+        - action: fan.turn_on
+          data:
+            preset_mode: Auto
+          target:
+            entity_id: fan.irynas_bedroom_air_purifier
+      - action: select.select_option
+        data:
+          option: 'Off'
+        target:
+          entity_id: select.irynas_bedroom_air_purifier_screen_brightness
+    - conditions:
+      - condition: trigger
+        id:
+        - presence
+        - iryna_home
+      - condition: state
+        entity_id: person.iryna
+        state: home
+      - or:
+        - condition: trigger
+          id: presence
+        - condition: state
+          entity_id: binary_sensor.night
+          state: 'on'
+        - condition: time
+          before: 08:00:00
+      sequence:
+      - action: fan.turn_on
+        data:
+          preset_mode: Auto
+        target:
+          entity_id: fan.irynas_bedroom_air_purifier
+      - if:
+        - or:
+          - condition: state
+            entity_id: binary_sensor.night
+            state: 'on'
+          - condition: time
+            before: 08:00:00
+        then:
+        - action: select.select_option
+          data:
+            option: 'Off'
+          target:
+            entity_id: select.irynas_bedroom_air_purifier_screen_brightness
+    - conditions:
+      - condition: trigger
+        id: absence
+      - condition: state
+        entity_id: binary_sensor.night
+        state: 'off'
+      - condition: time
+        after: 08:00:00
+      sequence:
+      - action: fan.turn_off
+        target:
+          entity_id: fan.irynas_bedroom_air_purifier
+    - conditions:
+      - condition: trigger
+        id: morning
+      sequence:
+      - action: select.select_option
+        data:
+          option: 'On'
+        target:
+          entity_id: select.irynas_bedroom_air_purifier_screen_brightness
+      - if:
+        - condition: state
+          entity_id: binary_sensor.irynas_bedroom_occupancy
+          state: 'off'
+        then:
+        - action: fan.turn_off
+          target:
+            entity_id: fan.irynas_bedroom_air_purifier
+  mode: queued
+- id: '1761249005669'
+  alias: Notifications - Plex
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - sensor.plex_on_nas_library_movies
+    attribute: last_added_item
+    id: movie
+  - trigger: state
+    entity_id:
+    - sensor.plex_on_nas_library_cartoons
+    attribute: last_added_item
+    id: cartoon
+  - trigger: state
+    entity_id:
+    - sensor.plex_on_nas_library_tv_shows
+    attribute: last_added_item
+    id: tv_show_episode
+  - trigger: state
+    entity_id:
+    - sensor.plex_on_nas_library_tv_shows
+    attribute: seasons
+    id: tv_show_season
+  - trigger: state
+    entity_id:
+    - sensor.plex_on_nas_library_tv_shows
+    attribute: shows
+    id: tv_show
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - movie
+      sequence:
+      - action: script.notify
+        data:
+          persons:
+          - person.semyon
+          description: В медиатеку Plex добавлен новый фильм "{{ state_attr('sensor.plex_on_nas_library_movies',
+            'last_added_item') }}". Укажи название фильма, не указывай год.
+    - conditions:
+      - condition: trigger
+        id:
+        - cartoon
+      sequence:
+      - action: script.notify
+        data:
+          persons:
+          - person.semyon
+          description: В медиатеку Plex добавлен новый мультфильм "{{ state_attr('sensor.plex_on_nas_library_cartoons',
+            'last_added_item') }}". Укажи название мультифильма, не указывай год.
+          announce: false
+    - conditions:
+      - condition: trigger
+        id:
+        - tv_show_episode
+      sequence:
+      - action: script.notify
+        data:
+          persons:
+          - person.semyon
+          description: В медиатеку Plex добавлена новая серия сериала "{{ state_attr('sensor.plex_on_nas_library_tv_shows',
+            'last_added_item') }}". Укажи название сериала, не указывай название серии
+            и ее порядковый номер.
+    - conditions:
+      - condition: trigger
+        id:
+        - tv_show_season
+      - condition: template
+        value_template: '{{ (trigger.to_state.attributes.seasons|int(0)) > (trigger.from_state.attributes.seasons|int(0))
+          }}'
+      sequence:
+      - action: script.notify
+        data:
+          persons:
+          - person.semyon
+          description: В медиатеку Plex добавлен новый сезон сериала "{{ state_attr('sensor.plex_on_nas_library_tv_shows',
+            'last_added_item') }}". Укажи название сериала и номер сезона, не указывай
+            названия серий.
+    - conditions:
+      - condition: trigger
+        id:
+        - tv_show
+      - condition: template
+        value_template: '{{ (trigger.to_state.attributes.shows|int(0)) > (trigger.from_state.attributes.shows|int(0))
+          }}'
+      sequence:
+      - action: script.notify
+        data:
+          persons:
+          - person.semyon
+          description: В медиатеку Plex добавлен новый сериал "{{ state_attr('sensor.plex_on_nas_library_tv_shows',
+            'last_added_item') }}". Укажи название сериала, не указывай год.
+          announce: false
+  mode: single
+- id: '1761645317783'
+  alias: Notifications - Bed linen
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.morning
+    id: morning
+    to: 'on'
+  conditions: []
+  actions:
+  - if:
+    - condition: or
+      conditions:
+      - condition: state
+        entity_id: binary_sensor.irynas_bed_sheets
+        state: 'on'
+      - condition: state
+        entity_id: binary_sensor.irynas_bed_pillowcase
+        state: 'on'
+    then:
+    - variables:
+        irynas_overdue_bed_pillowcase: '{{ states(''input_number.irynas_bed_pillowcase'')
+          | int - 7 }}'
+        irynas_overdue_bed_sheets: '{{ states(''input_number.irynas_bed_sheets'')
+          | int - 14 }}'
+    - action: script.notify
+      metadata: {}
+      data:
+        announce: false
+        persons:
+        - person.iryna
+        description: 'Это {{ [irynas_overdue_bed_sheets, irynas_overdue_bed_pillowcase]
+          | max }}-е напоминание.
+
+
+          Использовалось дольше положенного, поэтому Ирине нужно заменить:
+
+          {% if states(''binary_sensor.irynas_bed_sheets'') == ''on'' %}
+
+          - постельное белье
+
+          {% endif %}
+
+          {% if states(''binary_sensor.irynas_bed_pillowcase'') == ''on'' %}
+
+          - наволочку для подушки
+
+          {% endif %}'
+  - if:
+    - condition: or
+      conditions:
+      - condition: state
+        entity_id: binary_sensor.semyons_bed_sheets
+        state: 'on'
+      - condition: state
+        entity_id: binary_sensor.semyons_bed_pillowcase
+        state: 'on'
+    then:
+    - variables:
+        semyons_overdue_bed_pillowcase: '{{ states(''input_number.semyons_bed_pillowcase'')
+          | int - 7 }}'
+        semyons_overdue_bed_sheets: '{{ states(''input_number.semyons_bed_sheets'')
+          | int - 14 }}'
+    - action: script.notify
+      metadata: {}
+      data:
+        announce: false
+        persons:
+        - person.semyon
+        description: 'Это {{ [semyons_overdue_bed_sheets, semyons_overdue_bed_pillowcase]
+          | max }}-е напоминание.
+
+
+          Использовалось дольше положенного, поэтому Семену нужно заменить:
+
+          {% if states(''binary_sensor.semyons_bed_sheets'') == ''on'' %}
+
+          - постельное белье
+
+          {% endif %}
+
+          {% if states(''binary_sensor.semyons_bed_pillowcase'') == ''on'' %}
+
+          - наволочку для подушки
+
+          {% endif %}'
+  mode: single
+- id: '1761750561648'
+  alias: Switch - Entryway
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - event.entryway_switch_action
+    not_from: unavailable
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.to_state.attributes.event_type == ''double_left''
+      }}'
+  actions:
+  - parallel:
+    - action: lock.unlock
+      metadata: {}
+      data: {}
+      target:
+        entity_id: lock.entryway
+    - action: scene.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id: scene.leave_home
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 30
+      milliseconds: 0
+  - action: light.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id: light.entryway
+  mode: queued
+  max: 10
+- id: '1761907949866'
+  alias: Notifications - Water Heater
+  description: ''
+  triggers:
+  - trigger: event
+    event_type: timer.finished
+    event_data:
+      entity_id: timer.water_heater
+    id: finished
+  - trigger: event
+    event_type: timer.cancelled
+    event_data:
+      entity_id: timer.water_heater
+    id: cancelled
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - finished
+      sequence:
+      - action: script.notify
+        metadata: {}
+        data:
+          description: Водонагреватель закончил нагрев.
+          persons:
+          - person.semyon
+          - person.iryna
+          announce: true
+    - conditions:
+      - condition: trigger
+        id:
+        - cancelled
+      sequence:
+      - action: script.notify
+        metadata: {}
+        data:
+          description: Водонагреватель закончил нагрев даже раньше времени.
+          persons:
+          - person.semyon
+          - person.iryna
+          announce: true
+  mode: single
+- id: '1761997512031'
+  alias: Notifications - Stove
+  description: ''
+  triggers:
+  - trigger: event
+    event_type: timer.finished
+    event_data:
+      entity_id: timer.stove
+  conditions: []
+  actions:
+  - action: script.notify
+    metadata: {}
+    data:
+      description: Кухонная плита работает дольше {{ state_attr('timer.stove', 'duration')
+        }}. Может быть, ее забыли выключить?
+      persons:
+      - person.semyon
+      - person.iryna
+      announce: true
+  mode: single
+- id: '1761997575706'
+  alias: Notifications - Oven
+  description: ''
+  triggers:
+  - trigger: event
+    event_type: timer.finished
+    event_data:
+      entity_id: timer.oven
+  conditions: []
+  actions:
+  - action: script.notify
+    metadata: {}
+    data:
+      description: Духовка работает дольше {{ state_attr('timer.oven', 'duration')
+        }}. Может быть, ее забыли выключить?
+      persons:
+      - person.semyon
+      - person.iryna
+      announce: true
+  mode: single
+- id: '1762005091052'
+  alias: Water Heating
+  description: ''
+  triggers:
+  - trigger: sun
+    event: sunrise
+    offset: 00:15:00
+  conditions:
+  - condition: state
+    entity_id: weather.forecast_home
+    state:
+    - cloudy
+    - exceptional
+    - fog
+    - hail
+    - lightning-rainy
+    - lightning
+    - partlycloudy
+    - pouring
+    - rainy
+    - snowy-rainy
+    - snowy
+    - windy-variant
+    - windy
+  - condition: numeric_state
+    entity_id: weather.forecast_home
+    attribute: temperature
+    below: 22
+  - condition: numeric_state
+    entity_id: weather.forecast_home
+    attribute: cloud_coverage
+    above: 75
+    enabled: false
+  actions:
+  - action: switch.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: switch.water_heater
+  mode: single
+- id: '1764069127198'
+  alias: Knob - Semyon’s Bedroom
+  description: ''
+  use_blueprint:
+    path: semyonchetvertnyh/light_aqara_knob.yaml
+    input:
+      knob_action_event: event.semyons_bedroom_knob_action
+      knob_action_rotation_angle_speed: sensor.semyons_bedroom_knob_action_rotation_angle_speed
+      knob_action_rotation_button_state: sensor.semyons_bedroom_knob_action_rotation_button_state
+      target_light:
+        entity_id: light.semyons_bedroom
+- id: '1764312603111'
+  alias: Notifications - Coffeemaker
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - timer.coffeemaker
+    to:
+    - active
+    for:
+      hours: 0
+      minutes: 3
+      seconds: 0
+  conditions:
+  - alias: 'If Last triggered of Notifications: Coffeemaker is not today'
+    condition: template
+    value_template: '{% set last_triggered = state_attr(''automation.notifications_coffeemaker'',
+      ''last_triggered'') %}
+
+      {{ last_triggered is none or last_triggered.date() != now().date() }}
+
+      '
+  actions:
+  - action: script.notify
+    metadata: {}
+    data:
+      announce: false
+      persons:
+      - person.semyon
+      description: Кофеварка сварила кофе.
+  mode: single
+- id: '1764780210372'
+  alias: Zone - Iryna left
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id: person.iryna
+  conditions:
+  - condition: template
+    value_template: "{{ zone_entity == 'zone.home' and trigger.from_state.state ==
+      'home' and trigger.to_state.state != 'home'\n  or trigger.from_state.state ==
+      zone_state and trigger.to_state.state != zone_state }}"
+  actions:
+  - alias: Notify that a person has left the zone
+    domain: mobile_app
+    type: notify
+    device_id: 1992ba14a20d3c2f1ebf50d0281bf8f9
+    message: '{{ person_name }} has left {{ zone_state }}'
+  variables:
+    zone_entity: zone.parents_home
+    zone_state: '{{ states[zone_entity].name }}'
+    person_entity: person.iryna
+    person_name: '{{ states[person_entity].name }}'
+- id: '1765355634872'
+  alias: Notifications - Battery
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.entryway_lock_charging
+    from: 'on'
+    to: 'off'
+    id: entryway_lock
+  - trigger: state
+    entity_id: binary_sensor.bathroom_speaker_charging
+    from: 'on'
+    to: 'off'
+    id: bathroom_speaker
+  - trigger: state
+    entity_id: binary_sensor.living_room_shade_left_charging_status
+    from: 'on'
+    to: 'off'
+    id: living_room_shade_left
+  - trigger: state
+    entity_id: binary_sensor.living_room_shade_right_charging_status
+    from: 'on'
+    to: 'off'
+    id: living_room_shade_right
+  - trigger: state
+    entity_id: binary_sensor.irynas_bedroom_shade_charging_status
+    from: 'on'
+    to: 'off'
+    id: irynas_bedroom_shade
+  - trigger: state
+    entity_id: binary_sensor.semyons_bedroom_shade_charging_status
+    from: 'on'
+    to: 'off'
+    id: semyons_bedroom_shade
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: entryway_lock
+      - condition: numeric_state
+        entity_id: sensor.entryway_lock_battery
+        above: 90
+      sequence:
+      - action: script.notify
+        data:
+          description: 'Входной замок зарядился до {{ states(''sensor.entryway_lock_battery'')
+            }}%. Можно отключить пауербанк.
+
+            '
+          persons:
+          - person.semyon
+          announce: false
+    - conditions:
+      - condition: trigger
+        id: bathroom_speaker
+      - condition: numeric_state
+        entity_id: sensor.bathroom_speaker_battery
+        above: 90
+      sequence:
+      - action: script.notify
+        data:
+          description: 'Колонка в ванной зарядилась до {{ states(''sensor.bathroom_speaker_battery'')
+            }}%. Можно отключить пауербанк.
+
+            '
+          persons:
+          - person.semyon
+          announce: false
+    - conditions:
+      - condition: trigger
+        id: living_room_shade_left
+      - condition: numeric_state
+        entity_id: sensor.living_room_shade_left_battery
+        above: 90
+      sequence:
+      - action: script.notify
+        data:
+          description: 'Драйвер для левой шторы в гостинной зарядился до {{ states(''sensor.living_room_shade_left_battery'')
+            }}%. Можно отключить пауербанк.
+
+            '
+          persons:
+          - person.semyon
+          announce: false
+    - conditions:
+      - condition: trigger
+        id: living_room_shade_right
+      - condition: numeric_state
+        entity_id: sensor.living_room_shade_right_battery
+        above: 90
+      sequence:
+      - action: script.notify
+        data:
+          description: 'Драйвер для правой шторы в гостинной зарядился до {{ states(''sensor.living_room_shade_right_battery'')
+            }}%. Можно отключить пауербанк.
+
+            '
+          persons:
+          - person.semyon
+          announce: false
+    - conditions:
+      - condition: trigger
+        id: irynas_bedroom_shade
+      - condition: numeric_state
+        entity_id: sensor.irynas_bedroom_shade_battery
+        above: 90
+      sequence:
+      - action: script.notify
+        data:
+          description: 'Драйвер для шторы в Ириной спальне зарядился до {{ states(''sensor.irynas_bedroom_shade_battery'')
+            }}%. Можно отключить пауербанк.
+
+            '
+          persons:
+          - person.semyon
+          announce: false
+    - conditions:
+      - condition: trigger
+        id: semyons_bedroom_shade
+      - condition: numeric_state
+        entity_id: sensor.semyons_bedroom_shade_battery
+        above: 90
+      sequence:
+      - action: script.notify
+        data:
+          description: 'Драйвер для шторы в спальне Семена зарядился до {{ states(''sensor.semyons_bedroom_shade_battery'')
+            }}%. Можно отключить пауербанк.
+
+            '
+          persons:
+          - person.semyon
+          announce: false
+  - delay:
+      hours: 0
+      minutes: 10
+      seconds: 0
+      milliseconds: 0
+  mode: single
+- id: '1765357730396'
+  alias: Christmas
+  description: ''
+  triggers:
+  - trigger: sun
+    event: sunrise
+    offset: 00:15:00
+    id: sunrise
+  - trigger: state
+    entity_id: binary_sensor.morning
+    id: morning
+    to: 'on'
+  - trigger: state
+    entity_id: binary_sensor.night
+    id: night
+    to: 'on'
+  - trigger: state
+    entity_id: zone.home
+    id: residents
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - sunrise
+        - morning
+      sequence:
+      - condition: numeric_state
+        entity_id: zone.home
+        above: 0
+      - action: light.turn_on
+        metadata: {}
+        target:
+          entity_id:
+          - light.christmas_tree
+          - light.living_room_strings
+        data: {}
+    - conditions:
+      - condition: trigger
+        id:
+        - night
+      sequence:
+      - action: light.turn_off
+        metadata: {}
+        target:
+          entity_id:
+          - light.christmas_tree
+          - light.living_room_strings
+        data: {}
+    - conditions:
+      - condition: trigger
+        id:
+        - residents
+      sequence:
+      - if:
+        - condition: numeric_state
+          entity_id: zone.home
+          above: 0
+        then:
+        - action: light.turn_on
+          metadata: {}
+          target:
+            entity_id:
+            - light.christmas_tree
+            - light.living_room_strings
+          data: {}
+        else:
+        - action: light.turn_off
+          metadata: {}
+          target:
+            entity_id:
+            - light.christmas_tree
+            - light.living_room_strings
+          data: {}
+  mode: single
+- id: '1767120628276'
+  alias: 'Heating: Geofencing-based'
+  description: Heating - Geofencing (Proximity + Zone)
+  triggers:
+  - trigger: numeric_state
+    entity_id: sensor.home_nearest_distance
+    below: 5
+    id: approaching
+  - trigger: numeric_state
+    entity_id: sensor.home_semyon_distance
+    below: 5
+    id: approaching_semyon
+  - trigger: numeric_state
+    entity_id: sensor.home_iryna_distance
+    below: 5
+    id: approaching_iryna
+  - trigger: numeric_state
+    entity_id: sensor.home_nearest_distance
+    above: 5
+    id: leaving
+  - trigger: numeric_state
+    entity_id: zone.home
+    above: 0
+    id: approaching
+  - trigger: state
+    entity_id: zone.home
+    to: '0'
+    id: leaving
+  - trigger: state
+    entity_id: person.semyon
+    to: home
+    id: approaching_semyon
+  - trigger: state
+    entity_id: person.iryna
+    to: home
+    id: approaching_iryna
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: approaching
+      - condition: state
+        entity_id: sensor.home_nearest_direction_of_travel
+        state:
+        - towards
+        - arrived
+      - condition: numeric_state
+        entity_id: sensor.living_room_temperature
+        below: 19
+      sequence:
+      - action: climate.set_temperature
+        target:
+          entity_id: climate.living_room_ac
+        data:
+          hvac_mode: heat
+          temperature: 24
+      - action: climate.turn_on
+        metadata: {}
+        target:
+          entity_id:
+          - climate.living_room_ac
+        data: {}
+    - conditions:
+      - condition: trigger
+        id: approaching_iryna
+      - condition: state
+        entity_id: sensor.home_iryna_direction_of_travel
+        state:
+        - towards
+        - arrived
+      - condition: numeric_state
+        entity_id: sensor.irynas_bedroom_temperature
+        below: 19
+      sequence:
+      - action: climate.set_temperature
+        target:
+          entity_id: climate.irynas_bedroom_ac
+        data:
+          hvac_mode: heat
+          temperature: 22
+      - action: climate.turn_on
+        metadata: {}
+        target:
+          entity_id:
+          - climate.irynas_bedroom_ac
+        data: {}
+    - conditions:
+      - condition: trigger
+        id: approaching_semyon
+      - condition: state
+        entity_id: sensor.home_semyon_direction_of_travel
+        state:
+        - towards
+        - arrived
+      - condition: numeric_state
+        entity_id: sensor.semyons_bedroom_temperature
+        below: 19
+      sequence:
+      - action: climate.set_temperature
+        target:
+          entity_id: climate.semyons_bedroom_ac
+        data:
+          hvac_mode: heat
+          temperature: 22
+      - action: climate.turn_on
+        metadata: {}
+        target:
+          entity_id: climate.semyons_bedroom_ac
+        data: {}
+    - conditions:
+      - condition: trigger
+        id: leaving
+      sequence:
+      - action: climate.turn_off
+        target:
+          entity_id:
+          - climate.living_room_ac
+          - climate.irynas_bedroom_ac
+          - climate.semyons_bedroom_ac
+  mode: parallel
+  max: 10
+- id: '1769519556614'
+  alias: Notifications - Weather Alert
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.meteoalarm
+    to:
+    - 'on'
+    from:
+    - 'off'
+    id: meteoalarm
+  - trigger: state
+    entity_id:
+    - binary_sensor.outdoor_dust_storm
+    to:
+    - 'on'
+    from:
+    - 'off'
+    id: dust
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - meteoalarm
+      - condition: template
+        value_template: '{% set onset = state_attr(''binary_sensor.meteoalarm'', ''onset'')
+          %}
+
+          {{ onset is not none and as_datetime(onset) > now() }}
+
+          '
+      sequence:
+      - action: script.notify
+        data:
+          announce: true
+          persons:
+          - person.semyon
+          - person.iryna
+          description: 'Сработал meteoalarm.
+
+            Данные MeteoAlarm:
+
+            - event: {{ state_attr(''binary_sensor.meteoalarm'', ''event'') }}
+
+            - awareness_type: {{ state_attr(''binary_sensor.meteoalarm'', ''awareness_type'')
+            }}
+
+            - awareness_level: {{ state_attr(''binary_sensor.meteoalarm'', ''awareness_level'')
+            }}
+
+            - severity: {{ state_attr(''binary_sensor.meteoalarm'', ''severity'')
+            }}
+
+            - certainty: {{ state_attr(''binary_sensor.meteoalarm'', ''certainty'')
+            }}
+
+            - onset: {{ state_attr(''binary_sensor.meteoalarm'', ''onset'') }}
+
+            - expires: {{ state_attr(''binary_sensor.meteoalarm'', ''expires'') }}
+
+            '
+    - conditions:
+      - condition: trigger
+        id:
+        - dust
+      sequence:
+      - action: script.notify
+        data:
+          announce: true
+          persons:
+          - person.semyon
+          - person.iryna
+          description: На улице пылевая буря. Нужно закрыть окна.
+  mode: single
+- id: '1769746691823'
+  alias: Knob - Iryna’s Bedroom
+  description: ''
+  use_blueprint:
+    path: semyonchetvertnyh/light_aqara_knob.yaml
+    input:
+      knob_action_event: event.irynas_bedroom_knob_action
+      knob_action_rotation_angle_speed: sensor.irynas_bedroom_knob_action_rotation_angle_speed
+      knob_action_rotation_button_state: sensor.irynas_bedroom_knob_action_rotation_button_state
+      target_light:
+        entity_id:
+        - light.irynas_bedroom
+        - light.irynas_bedside_lamp
+- id: '1770116859281'
+  alias: Notifications - Iron
+  description: ''
+  triggers:
+  - trigger: event
+    event_type: timer.finished
+    event_data:
+      entity_id: timer.iron
+  conditions: []
+  actions:
+  - action: script.notify
+    metadata: {}
+    data:
+      description: Утюг включен дольше {{ state_attr('timer.iron', 'duration') }}.
+        Вы еще гладите? Может быть, вы забыли его выключить?
+      persons:
+      - person.semyon
+      - person.iryna
+      announce: true
+  mode: single
+- id: '1770825125062'
+  alias: Switch - Balcony
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - event.balcony_switch_action
+    not_from: unavailable
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.to_state.attributes.event_type == ''single'' }}'
+  actions:
+  - action: light.toggle
+    target:
+      entity_id:
+      - light.balcony
+      - light.balcony_floor_lamp
+    data: {}
+  mode: restart
+- id: '1772567711369'
+  alias: Alarm - Trigger
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.entryway_door
+    - binary_sensor.balcony_door
+    - binary_sensor.laundry_door
+    from: 'off'
+    to: 'on'
+  - trigger: state
+    entity_id:
+    - binary_sensor.irynas_bedroom_window
+    - binary_sensor.semyons_bedroom_window
+    - binary_sensor.bathroom_window
+    from: 'off'
+    to: 'on'
+  - trigger: state
+    entity_id:
+    - binary_sensor.kitchen_camera_person_occupancy
+    - binary_sensor.living_room_camera_person_occupancy
+    from: 'off'
+    to: 'on'
+  - trigger: state
+    entity_id:
+    - binary_sensor.kitchen_occupancy
+    - binary_sensor.living_room_occupancy
+    - binary_sensor.bathroom_occupancy
+    - binary_sensor.balcony_occupancy
+    from: 'off'
+    to: 'on'
+    enabled: false
+  conditions:
+  - condition: state
+    entity_id: alarm_control_panel.home
+    state:
+    - armed_away
+    enabled: true
+  actions:
+  - action: alarm_control_panel.alarm_trigger
+    data:
+      code: '!secret alarm_code'
+    target:
+      entity_id: alarm_control_panel.home
+    enabled: true
+  - action: persistent_notification.create
+    metadata: {}
+    data:
+      message: Alarm was triggered by `{{trigger.to_state.entity_id}}`.
+  mode: single
+- id: '1773095993059'
+  alias: Notifications - Internet
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.internet
+    from:
+    - 'off'
+    to:
+    - 'on'
+  conditions: []
+  actions:
+  - action: script.notify
+    metadata: {}
+    data:
+      announce: false
+      description: Интернет был отключен, но теперь снова доступен.
+      persons:
+      - person.semyon
+  mode: single
+- id: '1773232820303'
+  alias: 'Alarm - Arm/Disarm: Geofencing-based'
+  description: Arm/Disarm alarm - Geofencing (Zone)
+  triggers:
+  - trigger: numeric_state
+    entity_id: zone.home
+    above: 0
+    id: approaching
+  - trigger: state
+    entity_id: zone.home
+    to: '0'
+    id: leaving
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - approaching
+      sequence:
+      - action: alarm_control_panel.alarm_disarm
+        metadata: {}
+        target:
+          entity_id: alarm_control_panel.home
+        data:
+          code: '1234'
+    - conditions:
+      - condition: trigger
+        id:
+        - leaving
+      sequence:
+      - action: alarm_control_panel.alarm_arm_away
+        metadata: {}
+        target:
+          entity_id: alarm_control_panel.home
+        data:
+          code: '1234'
+  mode: single
+- id: '1773319483950'
+  alias: Alarm - Sync
+  description: Keeps alarm_control_panel.home, kitchen and living room camera systems
+    in sync
+  triggers:
+  - entity_id:
+    - alarm_control_panel.home
+    - alarm_control_panel.kitchen_camera_security_system
+    - alarm_control_panel.living_room_camera_security_system
+    not_from:
+    - unavailable
+    - unknown
+    not_to:
+    - unavailable
+    - unknown
+    trigger: state
+  conditions:
+  - condition: template
+    value_template: "{% set s = trigger.to_state.state %} {% set panels = [\n  'alarm_control_panel.home',\n
+      \ 'alarm_control_panel.kitchen_camera_security_system',\n  'alarm_control_panel.living_room_camera_security_system'\n]
+      %} {{ panels | map('states') | reject('eq', s) | list | count > 0 }}\n"
+    enabled: false
+  actions:
+  - variables:
+      new_state: '{{ trigger.to_state.state }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ new_state == ''disarmed'' }}'
+      - condition: template
+        value_template: '{{ new_state == ''armed_home'' }}'
+      sequence:
+      - target:
+          entity_id:
+          - alarm_control_panel.home
+          - alarm_control_panel.kitchen_camera_security_system
+          - alarm_control_panel.living_room_camera_security_system
+        action: alarm_control_panel.alarm_disarm
+        data:
+          code: '1234'
+    - conditions:
+      - condition: template
+        value_template: '{{ new_state == ''armed_away'' }}'
+      - condition: template
+        value_template: '{{ new_state == ''armed_night'' }}'
+      sequence:
+      - target:
+          entity_id:
+          - alarm_control_panel.home
+          - alarm_control_panel.kitchen_camera_security_system
+          - alarm_control_panel.living_room_camera_security_system
+        action: alarm_control_panel.alarm_arm_away
+        data:
+          code: '1234'
+    - conditions:
+      - condition: template
+        value_template: '{{ new_state == ''triggered'' }}'
+      sequence:
+      - target:
+          entity_id:
+          - alarm_control_panel.home
+          - alarm_control_panel.kitchen_camera_security_system
+          - alarm_control_panel.living_room_camera_security_system
+        action: alarm_control_panel.alarm_trigger
+        data:
+          code: '1234'
+  mode: single
+  max_exceeded: silent
+- id: '1774606449800'
+  alias: Alarm - Detection
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - alarm_control_panel.home
+    to:
+    - armed_away
+    id: away
+  - trigger: state
+    entity_id:
+    - alarm_control_panel.home
+    to:
+    - armed_home
+    id: home
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - away
+      sequence:
+      - action: switch.turn_on
+        metadata: {}
+        target:
+          entity_id:
+          - switch.kitchen_camera_detect
+          - switch.living_room_camera_detect
+        data: {}
+    - conditions:
+      - condition: trigger
+        id:
+        - home
+      sequence:
+      - action: switch.turn_off
+        metadata: {}
+        target:
+          entity_id:
+          - switch.kitchen_camera_detect
+          - switch.living_room_camera_detect
+        data: {}
+  mode: single
+- id: '1783934989428'
+  alias: Semyons Bedroom AC LED
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.night
+    to:
+    - 'on'
+  conditions:
+  - condition: climate.is_on
+    target:
+      entity_id: climate.semyons_bedroom_ac
+    options:
+      behavior: any
+      for: 00:00:00
+  actions:
+  - action: switch.turn_off
+    target:
+      entity_id: switch.semyons_bedroom_ac_led
+  mode: single
+- id: '1784740616477'
+  alias: 'Cooling: Geofencing-based'
+  description: Cooling - Geofencing (Proximity + Zone)
+  triggers:
+  - trigger: numeric_state
+    entity_id: sensor.home_nearest_distance
+    below: 5
+    id: approaching
+  - trigger: numeric_state
+    entity_id: sensor.home_semyon_distance
+    below: 5
+    id: approaching_semyon
+  - trigger: numeric_state
+    entity_id: sensor.home_iryna_distance
+    below: 5
+    id: approaching_iryna
+  - trigger: numeric_state
+    entity_id: sensor.home_nearest_distance
+    above: 5
+    id: leaving
+  - trigger: numeric_state
+    entity_id: zone.home
+    above: 0
+    id: approaching
+  - trigger: state
+    entity_id: zone.home
+    to: '0'
+    id: leaving
+  - trigger: state
+    entity_id: person.semyon
+    to: home
+    id: approaching_semyon
+  - trigger: state
+    entity_id: person.iryna
+    to: home
+    id: approaching_iryna
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: approaching
+      - condition: state
+        entity_id: sensor.home_nearest_direction_of_travel
+        state:
+        - towards
+        - arrived
+      - condition: numeric_state
+        entity_id: sensor.living_room_temperature
+        above: 25.5
+      sequence:
+      - action: climate.set_temperature
+        target:
+          entity_id: climate.living_room_ac
+        data:
+          hvac_mode: cool
+          temperature: 26
+      - action: climate.turn_on
+        metadata: {}
+        target:
+          entity_id:
+          - climate.living_room_ac
+        data: {}
+    - conditions:
+      - condition: trigger
+        id: approaching_iryna
+      - condition: state
+        entity_id: sensor.home_iryna_direction_of_travel
+        state:
+        - towards
+        - arrived
+      - condition: numeric_state
+        entity_id: sensor.irynas_bedroom_temperature
+        above: 25
+      sequence:
+      - action: climate.set_temperature
+        target:
+          entity_id: climate.irynas_bedroom_ac
+        data:
+          hvac_mode: cool
+          temperature: 25
+      - action: climate.turn_on
+        metadata: {}
+        target:
+          entity_id:
+          - climate.irynas_bedroom_ac
+        data: {}
+    - conditions:
+      - condition: trigger
+        id: approaching_semyon
+      - condition: state
+        entity_id: sensor.home_semyon_direction_of_travel
+        state:
+        - towards
+        - arrived
+      - condition: numeric_state
+        entity_id: sensor.semyons_bedroom_temperature
+        above: 24
+      sequence:
+      - action: climate.set_temperature
+        target:
+          entity_id: climate.semyons_bedroom_ac
+        data:
+          hvac_mode: cool
+          temperature: 25
+      - action: climate.turn_on
+        metadata: {}
+        target:
+          entity_id: climate.semyons_bedroom_ac
+        data: {}
+    - conditions:
+      - condition: trigger
+        id: leaving
+      sequence:
+      - action: climate.turn_off
+        target:
+          entity_id:
+          - climate.living_room_ac
+          - climate.irynas_bedroom_ac
+          - climate.semyons_bedroom_ac
+        data: {}
+  mode: parallel
+  max: 10
+- id: '1788003097860'
+  alias: Button - Changing Table
+  description: ''
+  triggers:
+  - trigger: event.received
+    target:
+      entity_id: event.changing_table_button_action
+    options:
+      event_type:
+      - single
+    id: single
+  - trigger: event.received
+    target:
+      entity_id: event.changing_table_button_action
+    options:
+      event_type:
+      - double
+    id: double
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: single
+      sequence:
+      - action: light.toggle
+        target:
+          entity_id: light.living_room_changing_table
+    - conditions:
+      - condition: trigger
+        id: double
+      sequence:
+      - action: climate.toggle
+        target:
+          entity_id: climate.living_room_ac
+  mode: single
+- id: '1789804459394'
+  alias: Semyon’s Bedroom Oil Diffuser
+  description: ''
+  triggers:
+  - trigger: humidifier.turned_on
+    target:
+      entity_id: humidifier.semyons_bedroom_oil_diffuser
+  - trigger: humidifier.turned_off
+    target:
+      entity_id: humidifier.semyons_bedroom_oil_diffuser
+  conditions: []
+  actions:
+  - if:
+    - condition: humidifier.is_on
+      target:
+        entity_id: humidifier.semyons_bedroom_oil_diffuser
+      options:
+        behavior: any
+        for: 00:00:00
+    then:
+    - action: light.turn_on
+      target:
+        entity_id: light.semyons_bedroom_oil_diffuser
+    else:
+    - action: light.turn_off
+      target:
+        entity_id: light.semyons_bedroom_oil_diffuser
+  mode: single

@@ -1,0 +1,418 @@
+# climate:
+#   - platform: climate_template
+#     name: "Living Room AC"
+#     unique_id: living_room_ac
+#     icon: mdi:air-conditioner
+#     availability_template: "{{ states('climate.living_room_ac_tuya') not in ['unknown', 'unavailable'] }}"
+
+#     min_temp_template: "{{ state_attr('climate.living_room_ac_tuya', 'min_temp') }}"
+#     max_temp_template: "{{ state_attr('climate.living_room_ac_tuya', 'max_temp') }}"
+#     temp_step: "0.5"
+
+#     current_temperature_template: "{{ state_attr('climate.living_room_ac_tuya', 'current_temperature') }}"
+#     target_temperature_template: "{{ state_attr('climate.living_room_ac_tuya', 'temperature') }}"
+#     set_temperature:
+#       - action: climate.set_temperature
+#         target:
+#           entity_id: climate.living_room_ac_tuya
+#         data:
+#           temperature: "{{ state_attr('climate.living_room_ac', 'temperature') }}"
+
+#     current_humidity_template: "{{ states('sensor.living_room_humidity') }}"
+#     min_humidity_template: "{{ state_attr('climate.living_room_ac_tuya', 'min_humidity') }}"
+#     max_humidity_template: "{{ state_attr('climate.living_room_ac_tuya', 'max_humidity') }}"
+
+#     modes:
+#       - "off"
+#       - "auto"
+#       # - "heat_cool"
+#       - "cool"
+#       - "dry"
+#       - "fan_only"
+#       - "heat"
+#     hvac_mode_template: "{{ 'auto' if is_state('climate.living_room_ac_tuya', 'heat_cool') else states('climate.living_room_ac_tuya') }}"
+#     set_hvac_mode:
+#       - action: climate.set_hvac_mode
+#         target:
+#           entity_id: climate.living_room_ac_tuya
+#         data:
+#           hvac_mode: "{{ 'heat_cool' if hvac_mode == 'auto' else hvac_mode }}"
+
+#     fan_modes:
+#       # - "auto"
+#       - "low"
+#       - "medium"
+#       - "high"
+#     fan_mode_template: >
+#       {% set p = state_attr('fan.living_room_ac', 'percentage') | int(0) %}
+#       {% if p <= 33 %}low
+#       {% elif p <= 66 %}medium
+#       {% else %}high
+#       {% endif %}
+#     set_fan_mode:
+#       - action: fan.set_percentage
+#         target:
+#           entity_id: fan.living_room_ac
+#         data:
+#           percentage: "{{ {'low': 33, 'medium': 66, 'high': 100}[fan_mode] | int }}"
+
+#     preset_modes:
+#       - away
+#       - comfort
+#       - boost
+#     preset_mode_template: "{{ state_attr('climate.living_room_ac_tuya', 'preset_mode') }}"
+#     set_preset_mode:
+#       - action: climate.set_preset_mode
+#         target:
+#           entity_id: climate.living_room_ac_tuya
+#         data:
+#           preset_mode: "{{ preset_mode }}"
+
+#     swing_modes:
+#       - "both"
+#       - "vertical"
+#       - "horizontal"
+#       - "off"
+#     swing_mode_template: >
+#       {% set v_swing = state_attr('climate.living_room_ac_tuya', 'swing_mode') %}
+#       {% set h_swing = state_attr('climate.living_room_ac_tuya', 'swing_horizontal_mode') %}
+#       {% if v_swing == 'on' and h_swing == 'on' %}both
+#       {% elif v_swing == 'on' and h_swing == 'off' %}vertical
+#       {% elif v_swing == 'off' and h_swing == 'on' %}horizontal
+#       {% else %}off{% endif %}
+#     set_swing_mode:
+#       - choose:
+#           # both = vertical swing on + horizontal swing on
+#           - conditions: "{{ swing_mode == 'both' }}"
+#             sequence:
+#               - action: climate.set_swing_mode
+#                 target:
+#                   entity_id: climate.living_room_ac_tuya
+#                 data:
+#                   swing_mode: "on"
+#               - action: climate.set_swing_horizontal_mode
+#                 target:
+#                   entity_id: climate.living_room_ac_tuya
+#                 data:
+#                   swing_horizontal_mode: "on"
+
+#           # vertical = vertical swing on, horizontal swing off
+#           - conditions: "{{ swing_mode == 'vertical' }}"
+#             sequence:
+#               - action: climate.set_swing_mode
+#                 target:
+#                   entity_id: climate.living_room_ac_tuya
+#                 data:
+#                   swing_mode: "on"
+#               - action: climate.set_swing_horizontal_mode
+#                 target:
+#                   entity_id: climate.living_room_ac_tuya
+#                 data:
+#                   swing_horizontal_mode: "off"
+
+#           # horizontal = vertical swing off, horizontal swing on
+#           - conditions: "{{ swing_mode == 'horizontal' }}"
+#             sequence:
+#               - action: climate.set_swing_mode
+#                 target:
+#                   entity_id: climate.living_room_ac_tuya
+#                 data:
+#                   swing_mode: "off"
+#               - action: climate.set_swing_horizontal_mode
+#                 target:
+#                   entity_id: climate.living_room_ac_tuya
+#                 data:
+#                   swing_horizontal_mode: "on"
+
+#           # off = both off
+#           - conditions: "{{ swing_mode == 'off' }}"
+#             sequence:
+#               - action: climate.set_swing_mode
+#                 target:
+#                   entity_id: climate.living_room_ac_tuya
+#                 data:
+#                   swing_mode: "off"
+#               - action: climate.set_swing_horizontal_mode
+#                 target:
+#                   entity_id: climate.living_room_ac_tuya
+#                 data:
+#                   swing_horizontal_mode: "off"
+
+#   - platform: climate_template
+#     name: "Iryna’s Bedroom AC"
+#     unique_id: irynas_bedroom_ac
+#     icon: mdi:air-conditioner
+#     availability_template: "{{ states('climate.irynas_bedroom_ac_tuya') not in ['unknown', 'unavailable'] }}"
+
+#     min_temp_template: "{{ state_attr('climate.irynas_bedroom_ac_tuya', 'min_temp') }}"
+#     max_temp_template: "{{ state_attr('climate.irynas_bedroom_ac_tuya', 'max_temp') }}"
+#     temp_step: "0.5"
+
+#     current_temperature_template: "{{ state_attr('climate.irynas_bedroom_ac_tuya', 'current_temperature') }}"
+#     target_temperature_template: "{{ state_attr('climate.irynas_bedroom_ac_tuya', 'temperature') }}"
+#     set_temperature:
+#       - action: climate.set_temperature
+#         target:
+#           entity_id: climate.irynas_bedroom_ac_tuya
+#         data:
+#           temperature: "{{ state_attr('climate.irynas_bedroom_ac', 'temperature') }}"
+
+#     current_humidity_template: "{{ states('sensor.irynas_bedroom_humidity') }}"
+#     min_humidity_template: "{{ state_attr('climate.irynas_bedroom_ac_tuya', 'min_humidity') }}"
+#     max_humidity_template: "{{ state_attr('climate.irynas_bedroom_ac_tuya', 'max_humidity') }}"
+
+#     modes:
+#       - "off"
+#       - "auto"
+#       # - "heat_cool"
+#       - "cool"
+#       - "dry"
+#       - "fan_only"
+#       - "heat"
+#     hvac_mode_template: "{{ 'auto' if is_state('climate.irynas_bedroom_ac_tuya', 'heat_cool') else states('climate.irynas_bedroom_ac_tuya') }}"
+#     set_hvac_mode:
+#       - action: climate.set_hvac_mode
+#         target:
+#           entity_id: climate.irynas_bedroom_ac_tuya
+#         data:
+#           hvac_mode: "{{ 'heat_cool' if hvac_mode == 'auto' else hvac_mode }}"
+
+#     fan_modes:
+#       # - "auto"
+#       - "low"
+#       - "medium"
+#       - "high"
+#     fan_mode_template: >
+#       {% set p = state_attr('fan.irynas_bedroom_ac', 'percentage') | int(0) %}
+#       {% if p <= 33 %}low
+#       {% elif p <= 66 %}medium
+#       {% else %}high
+#       {% endif %}
+#     set_fan_mode:
+#       - action: fan.set_percentage
+#         target:
+#           entity_id: fan.irynas_bedroom_ac
+#         data:
+#           percentage: "{{ {'low': 33, 'medium': 66, 'high': 100}[fan_mode] | int }}"
+
+#     preset_modes:
+#       - away
+#       - comfort
+#       - boost
+#     preset_mode_template: "{{ state_attr('climate.irynas_bedroom_ac_tuya', 'preset_mode') }}"
+#     set_preset_mode:
+#       - action: climate.set_preset_mode
+#         target:
+#           entity_id: climate.irynas_bedroom_ac_tuya
+#         data:
+#           preset_mode: "{{ preset_mode }}"
+
+#     swing_modes:
+#       - "both"
+#       - "vertical"
+#       - "horizontal"
+#       - "off"
+#     swing_mode_template: >
+#       {% set v_swing = state_attr('climate.irynas_bedroom_ac_tuya', 'swing_mode') %}
+#       {% set h_swing = state_attr('climate.irynas_bedroom_ac_tuya', 'swing_horizontal_mode') %}
+#       {% if v_swing == 'on' and h_swing == 'on' %}both
+#       {% elif v_swing == 'on' and h_swing == 'off' %}vertical
+#       {% elif v_swing == 'off' and h_swing == 'on' %}horizontal
+#       {% else %}off{% endif %}
+#     set_swing_mode:
+#       - choose:
+#           # both = vertical swing on + horizontal swing on
+#           - conditions: "{{ swing_mode == 'both' }}"
+#             sequence:
+#               - action: climate.set_swing_mode
+#                 target:
+#                   entity_id: climate.irynas_bedroom_ac_tuya
+#                 data:
+#                   swing_mode: "on"
+#               - action: climate.set_swing_horizontal_mode
+#                 target:
+#                   entity_id: climate.irynas_bedroom_ac_tuya
+#                 data:
+#                   swing_horizontal_mode: "on"
+
+#           # vertical = vertical swing on, horizontal swing off
+#           - conditions: "{{ swing_mode == 'vertical' }}"
+#             sequence:
+#               - action: climate.set_swing_mode
+#                 target:
+#                   entity_id: climate.irynas_bedroom_ac_tuya
+#                 data:
+#                   swing_mode: "on"
+#               - action: climate.set_swing_horizontal_mode
+#                 target:
+#                   entity_id: climate.irynas_bedroom_ac_tuya
+#                 data:
+#                   swing_horizontal_mode: "off"
+
+#           # horizontal = vertical swing off, horizontal swing on
+#           - conditions: "{{ swing_mode == 'horizontal' }}"
+#             sequence:
+#               - action: climate.set_swing_mode
+#                 target:
+#                   entity_id: climate.irynas_bedroom_ac_tuya
+#                 data:
+#                   swing_mode: "off"
+#               - action: climate.set_swing_horizontal_mode
+#                 target:
+#                   entity_id: climate.irynas_bedroom_ac_tuya
+#                 data:
+#                   swing_horizontal_mode: "on"
+
+#           # off = both off
+#           - conditions: "{{ swing_mode == 'off' }}"
+#             sequence:
+#               - action: climate.set_swing_mode
+#                 target:
+#                   entity_id: climate.irynas_bedroom_ac_tuya
+#                 data:
+#                   swing_mode: "off"
+#               - action: climate.set_swing_horizontal_mode
+#                 target:
+#                   entity_id: climate.irynas_bedroom_ac_tuya
+#                 data:
+#                   swing_horizontal_mode: "off"
+
+#   - platform: climate_template
+#     name: "Semyon’s Bedroom AC"
+#     unique_id: semyons_bedroom_ac
+#     icon: mdi:air-conditioner
+#     availability_template: "{{ not states('climate.semyons_bedroom_ac_tuya') in ['unknown', 'unavailable'] }}"
+
+#     min_temp_template: "{{ state_attr('climate.semyons_bedroom_ac_tuya', 'min_temp') }}"
+#     max_temp_template: "{{ state_attr('climate.semyons_bedroom_ac_tuya', 'max_temp') }}"
+#     temp_step: "0.5"
+
+#     current_temperature_template: "{{ state_attr('climate.semyons_bedroom_ac_tuya', 'current_temperature') }}"
+#     target_temperature_template: "{{ state_attr('climate.semyons_bedroom_ac_tuya', 'temperature') }}"
+#     set_temperature:
+#       - action: climate.set_temperature
+#         target:
+#           entity_id: climate.semyons_bedroom_ac_tuya
+#         data:
+#           temperature: "{{ state_attr('climate.semyons_bedroom_ac', 'temperature') }}"
+
+#     current_humidity_template: "{{ states('sensor.semyons_bedroom_humidity') }}"
+#     min_humidity_template: "{{ state_attr('climate.semyons_bedroom_ac_tuya', 'min_humidity') }}"
+#     max_humidity_template: "{{ state_attr('climate.semyons_bedroom_ac_tuya', 'max_humidity') }}"
+
+#     modes:
+#       - "off"
+#       - "auto"
+#       # - "heat_cool"
+#       - "cool"
+#       - "dry"
+#       - "fan_only"
+#       - "heat"
+#     hvac_mode_template: "{{ 'auto' if is_state('climate.semyons_bedroom_ac_tuya', 'heat_cool') else states('climate.semyons_bedroom_ac_tuya') }}"
+#     set_hvac_mode:
+#       - action: climate.set_hvac_mode
+#         target:
+#           entity_id: climate.semyons_bedroom_ac_tuya
+#         data:
+#           hvac_mode: "{{ 'heat_cool' if hvac_mode == 'auto' else hvac_mode }}"
+#     # hvac_action_template: heating / cooling / idle
+
+#     fan_modes:
+#       # - "auto"
+#       - "low"
+#       - "medium"
+#       - "high"
+#     fan_mode_template: >
+#       {% set p = state_attr('fan.semyons_bedroom_ac', 'percentage') | int(0) %}
+#       {% if p <= 33 %}low
+#       {% elif p <= 66 %}medium
+#       {% else %}high
+#       {% endif %}
+#     set_fan_mode:
+#       - action: fan.set_percentage
+#         target:
+#           entity_id: fan.semyons_bedroom_ac
+#         data:
+#           percentage: "{{ {'low': 33, 'medium': 66, 'high': 100}[fan_mode] | int }}"
+
+#     preset_modes:
+#       - away
+#       - comfort
+#       - boost
+#     preset_mode_template: "{{ state_attr('climate.semyons_bedroom_ac_tuya', 'preset_mode') }}"
+#     set_preset_mode:
+#       - action: climate.set_preset_mode
+#         target:
+#           entity_id: climate.semyons_bedroom_ac_tuya
+#         data:
+#           preset_mode: "{{ preset_mode }}"
+
+#     swing_modes:
+#       - "both"
+#       - "vertical"
+#       - "horizontal"
+#       - "off"
+#     swing_mode_template: >
+#       {% set v_swing = state_attr('climate.semyons_bedroom_ac_tuya', 'swing_mode') %}
+#       {% set h_swing = state_attr('climate.semyons_bedroom_ac_tuya', 'swing_horizontal_mode') %}
+#       {% if v_swing == 'on' and h_swing == 'on' %}both
+#       {% elif v_swing == 'on' and h_swing == 'off' %}vertical
+#       {% elif v_swing == 'off' and h_swing == 'on' %}horizontal
+#       {% else %}off{% endif %}
+#     set_swing_mode:
+#       - choose:
+#           # both = vertical swing on + horizontal swing on
+#           - conditions: "{{ swing_mode == 'both' }}"
+#             sequence:
+#               - action: climate.set_swing_mode
+#                 target:
+#                   entity_id: climate.semyons_bedroom_ac_tuya
+#                 data:
+#                   swing_mode: "on"
+#               - action: climate.set_swing_horizontal_mode
+#                 target:
+#                   entity_id: climate.semyons_bedroom_ac_tuya
+#                 data:
+#                   swing_horizontal_mode: "on"
+
+#           # vertical = vertical swing on, horizontal swing off
+#           - conditions: "{{ swing_mode == 'vertical' }}"
+#             sequence:
+#               - action: climate.set_swing_mode
+#                 target:
+#                   entity_id: climate.semyons_bedroom_ac_tuya
+#                 data:
+#                   swing_mode: "on"
+#               - action: climate.set_swing_horizontal_mode
+#                 target:
+#                   entity_id: climate.semyons_bedroom_ac_tuya
+#                 data:
+#                   swing_horizontal_mode: "off"
+
+#           # horizontal = vertical swing off, horizontal swing on
+#           - conditions: "{{ swing_mode == 'horizontal' }}"
+#             sequence:
+#               - action: climate.set_swing_mode
+#                 target:
+#                   entity_id: climate.semyons_bedroom_ac_tuya
+#                 data:
+#                   swing_mode: "off"
+#               - action: climate.set_swing_horizontal_mode
+#                 target:
+#                   entity_id: climate.semyons_bedroom_ac_tuya
+#                 data:
+#                   swing_horizontal_mode: "on"
+
+#           # off = both off
+#           - conditions: "{{ swing_mode == 'off' }}"
+#             sequence:
+#               - action: climate.set_swing_mode
+#                 target:
+#                   entity_id: climate.semyons_bedroom_ac_tuya
+#                 data:
+#                   swing_mode: "off"
+#               - action: climate.set_swing_horizontal_mode
+#                 target:
+#                   entity_id: climate.semyons_bedroom_ac_tuya
+#                 data:
+#                   swing_horizontal_mode: "off"

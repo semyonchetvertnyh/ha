@@ -1,0 +1,21 @@
+# Addons:
+#  - NGINX Home Assistant SSL proxy
+#  - Let's Encrypt
+
+# Router Open Ports Forwarding:
+#  - 443 - required for NGINX Home Assistant SSL proxy
+#  - 80 - required for Let's Encrypt (if configured as HTTP challenge)
+
+# Components:
+#  - Certificate Expiry
+
+# http:
+#   use_x_forwarded_for: true
+#   trusted_proxies:
+#     - 172.30.33.0/24
+
+# Configured via UI.
+# namecheapdns:
+#   host: kolossi
+#   domain: chetvertnyh.homes
+#   password: !secret namecheap_password

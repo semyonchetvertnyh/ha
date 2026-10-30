@@ -1,0 +1,117 @@
+# template:
+#   - sensor:
+
+#       - name: "Living Room Humidity"
+#         unique_id: living_room_humidity
+#         state: >
+#           {{ states('sensor.living_room_temperature_sensor_humidity') | int(none) }}
+#         device_class: humidity
+#         unit_of_measurement: "%"
+#         state_class: measurement
+
+#       - name: "Iryna’s Bedroom Humidity"
+#         unique_id: irynas_bedroom_humidity
+#         state: >
+#           {{ states('sensor.irynas_bedroom_temperature_sensor_humidity') | int(none) }}
+#         device_class: humidity
+#         unit_of_measurement: "%"
+#         state_class: measurement
+
+#       - name: "Semyon’s Bedroom Humidity"
+#         unique_id: semyons_bedroom_humidity
+#         state: >
+#           {{ states('sensor.semyons_bedroom_air_purifier_humidity') | int(none) }}
+#         device_class: humidity
+#         unit_of_measurement: "%"
+#         state_class: measurement
+
+#   - binary_sensor:
+
+#       - name: "Living Room Humidity"
+#         unique_id: living_room_humidity
+#         state: >
+#           {{ states('sensor.living_room_humidity')|float(0) > 60 }}
+#         availability: "{{ is_number(states('sensor.living_room_humidity')) }}"
+#         device_class: moisture
+#         attributes:
+#           threshold: "60%"
+#           current_humidity: "{{ states('sensor.living_room_humidity') ~ '%' }}"
+
+#       - name: "Iryna’s Bedroom Humidity"
+#         unique_id: irynas_bedroom_humidity
+#         state: >
+#           {{ states('sensor.irynas_bedroom_humidity')|float(0) > 60 }}
+#         availability: "{{ is_number(states('sensor.irynas_bedroom_humidity')) }}"
+#         device_class: moisture
+#         attributes:
+#           threshold: "60%"
+#           current_humidity: "{{ states('sensor.irynas_bedroom_humidity') ~ '%' }}"
+
+#       - name: "Semyon’s Bedroom Humidity"
+#         unique_id: semyons_bedroom_humidity
+#         state: >
+#           {{ states('sensor.semyons_bedroom_humidity')|float(0) > 60 }}
+#         availability: "{{ is_number(states('sensor.semyons_bedroom_humidity')) }}"
+#         device_class: moisture
+#         attributes:
+#           threshold: "60%"
+#           current_humidity: "{{ states('sensor.semyons_bedroom_humidity') ~ '%' }}"
+
+#       - name: "Bathroom Humidity"
+#         unique_id: bathroom_humidity
+#         device_class: moisture
+#         state: >
+#           {% set home_sensors = [
+#             states('sensor.living_room_humidity') | float(0),
+#             states('sensor.irynas_bedroom_humidity') | float(0),
+#             states('sensor.semyons_bedroom_humidity') | float(0)
+#           ] | select('ne', 0) | list %}
+#           {% set home = (home_sensors | sum / (home_sensors | count)) if (home_sensors | count) > 0 else 0 %}
+#           {% set bath = states('sensor.bathroom_humidity') | float(0) %}
+
+#           {% set on_threshold  = [75, home + 8] | max %}
+#           {% set off_threshold = [55, home + 3] | min %}
+
+#           {# Мягкое включение без истории: избыток над домом #}
+#           {% set excess_home = (bath - home) >= 7 %}
+#           {% set soft_on = excess_home and bath >= off_threshold %}
+
+#           {% if is_state(this.entity_id, 'on') %}
+#             {{ bath >= off_threshold }}
+#           {% else %}
+#             {{ bath >= on_threshold or soft_on }}
+#           {% endif %}
+#         attributes:
+#           home_humidity: >
+#             {% set home_sensors = [
+#               states('sensor.living_room_humidity') | float(0),
+#               states('sensor.irynas_bedroom_humidity') | float(0),
+#               states('sensor.semyons_bedroom_humidity') | float(0)
+#             ] | select('ne', 0) | list %}
+#             {% set home = (home_sensors | sum / (home_sensors | count)) if (home_sensors | count) > 0 else 0 %}
+
+#             {{ home | round(0) | int ~ '%' }}"
+#           current_humidity: >
+#             {% set bath = states('sensor.bathroom_humidity') | float(0) %}
+
+#             {{ bath | round(0) | int }}%
+#           off_threshold: >
+#             {% set home_sensors = [
+#               states('sensor.living_room_humidity') | float(0),
+#               states('sensor.irynas_bedroom_humidity') | float(0),
+#               states('sensor.semyons_bedroom_humidity') | float(0)
+#             ] | select('ne', 0) | list %}
+#             {% set home = (home_sensors | sum / (home_sensors | count)) if (home_sensors | count) > 0 else 0 %}
+#             {% set off_threshold = [55, home + 3] | min %}
+
+#             {{ off_threshold | round(0) | int ~ '%' }}"
+#           on_threshold: >
+#             {% set home_sensors = [
+#               states('sensor.living_room_humidity') | float(0),
+#               states('sensor.irynas_bedroom_humidity') | float(0),
+#               states('sensor.semyons_bedroom_humidity') | float(0)
+#             ] | select('ne', 0) | list %}
+#             {% set home = (home_sensors | sum / (home_sensors | count)) if (home_sensors | count) > 0 else 0 %}
+#             {% set on_threshold  = [75, home + 8] | max %}
+
+#             {{ on_threshold | round(0) | int ~ '%' }}"

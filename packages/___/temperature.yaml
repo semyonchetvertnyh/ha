@@ -1,0 +1,114 @@
+template:
+  - sensor:
+
+      - name: "Living Room Temperature"
+        unique_id: living_room_temperature
+        state: >
+          {{ states('sensor.living_room_temperature_sensor_temperature') }}
+        device_class: temperature
+        unit_of_measurement: °C
+        state_class: measurement
+
+      - name: "Iryna’s Bedroom Temperature"
+        unique_id: irynas_bedroom_temperature
+        state: >
+          {{ states('sensor.irynas_bedroom_temperature_sensor_temperature') }}
+        device_class: temperature
+        unit_of_measurement: °C
+        state_class: measurement
+
+      - name: "Semyon’s Bedroom Temperature"
+        unique_id: semyons_bedroom_temperature
+        state: >
+          {% set values = [
+              states('sensor.semyons_bedroom_air_purifier_temperature') | float(none),
+              states('sensor.semyons_bedroom_air_monitor_panel_temperature') | float(none),
+              state_attr('climate.semyons_bedroom_ac_tuya', 'current_temperature') | float(none),
+            ] | select('is_number') | list %}
+          {% set n = values | length %}
+
+          {{ ((values | sum / n) | round(2)) if n > 0 else none }}
+        attributes:
+          air_purifier_temperature: >
+            {{ states('sensor.semyons_bedroom_air_purifier_temperature') | round(1) | float(none) }} °C
+          air_monitor_panel_temperature: >
+            {{ states('sensor.semyons_bedroom_air_monitor_panel_temperature') | round(1) | float(none) }} °C
+          ac_current_temperature: >
+            {{ state_attr('climate.semyons_bedroom_ac_tuya', 'current_temperature') | round(1) | float(none) }} °C
+        device_class: temperature
+        unit_of_measurement: °C
+        state_class: measurement
+
+      - name: "Semyon’s Bedroom AC Temperature"
+        unique_id: semyons_bedroom_ac_temperature
+        state: >
+          {{ state_attr('climate.semyons_bedroom_ac_tuya', 'current_temperature') }}
+        device_class: temperature
+        unit_of_measurement: °C
+        state_class: measurement
+
+  # - binary_sensor:
+
+  #     # Heat
+
+  #     - name: "Living Room Heat"
+  #       unique_id: living_room_heat
+  #       state: >
+  #         {{ states('sensor.living_room_temperature')|float(0) >= 28 }}
+  #       availability: "{{ is_number(states('sensor.living_room_temperature')) }}"
+  #       device_class: heat
+  #       attributes:
+  #         threshold: 28 °C
+  #         current_temperature: "{{ states('sensor.living_room_temperature') }}"
+
+  #     - name: "Iryna’s Bedroom Heat"
+  #       unique_id: irynas_bedroom_heat
+  #       state: >
+  #         {{ states('sensor.irynas_bedroom_temperature')|float(0) >= 28 }}
+  #       availability: "{{ is_number(states('sensor.irynas_bedroom_temperature')) }}"
+  #       device_class: heat
+  #       attributes:
+  #         threshold: 28 °C
+  #         current_temperature: "{{ states('sensor.irynas_bedroom_temperature') }}"
+
+  #     - name: "Semyon’s Bedroom Heat"
+  #       unique_id: semyons_bedroom_heat
+  #       state: >
+  #         {{ states('sensor.semyons_bedroom_temperature')|float(0) >= 28 }}
+  #       availability: "{{ is_number(states('sensor.semyons_bedroom_temperature')) }}"
+  #       device_class: heat
+  #       attributes:
+  #         threshold: 28 °C
+  #         current_temperature: "{{ states('sensor.semyons_bedroom_temperature') }}"
+
+  #     # Cold
+
+  #     - name: "Living Room Cold"
+  #       unique_id: living_room_cold
+  #       state: >
+  #         {{ states('sensor.living_room_temperature')|float(0) < 18 }}
+  #       availability: "{{ is_number(states('sensor.living_room_temperature')) }}"
+  #       device_class: cold
+  #       attributes:
+  #         threshold: 18 °C
+  #         current_temperature: "{{ states('sensor.living_room_temperature') }}"
+
+  #     - name: "Iryna’s Bedroom Cold"
+  #       unique_id: irynas_bedroom_cold
+  #       state: >
+  #         {{ states('sensor.irynas_bedroom_temperature')|float(0) < 18 }}
+  #       availability: "{{ is_number(states('sensor.irynas_bedroom_temperature')) }}"
+  #       device_class: cold
+  #       attributes:
+  #         threshold: 18 °C
+  #         current_temperature: "{{ states('sensor.irynas_bedroom_temperature') }}"
+
+  #     - name: "Semyon’s Bedroom Cold"
+  #       unique_id: semyons_bedroom_cold
+  #       state: >
+  #         {{ states('sensor.semyons_bedroom_temperature')|float(0) < 18 }}
+  #       availability: "{{ is_number(states('sensor.semyons_bedroom_temperature')) }}"
+  #       device_class: cold
+  #       attributes:
+  #         threshold: 18 °C
+  #         current_temperature: "{{ states('sensor.semyons_bedroom_temperature') }}"

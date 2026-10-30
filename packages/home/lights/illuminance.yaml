@@ -1,0 +1,84 @@
+template:
+  - binary_sensor:
+
+      - name: "Outdoor Bright"
+        unique_id: outdoor_bright
+        device_class: light
+        state: "{{ state_attr('sun.sun', 'elevation')|float(-90) >= -2 }}"
+        attributes:
+          sun_elevation: "{{ state_attr('sun.sun', 'elevation')|float(-90) ~ ' °' }}"
+          sun_elevation_threshold: "-2 °"
+
+      # Гистерезис по освещённости:
+      #  - если уже светло, считаем комнату светлой, пока lux не упадёт до 20 lx;
+      #  - если темно — считаем светлой только после превышения 50 lx.
+      # 
+      # Переход в светлое состояние подтверждается 2 минуты, в тёмное — 5 минут,
+      # чтобы избежать переключений из-за кратковременных изменений освещения.
+
+      - name: "Kitchen Bright"
+        unique_id: kitchen_bright
+        device_class: light
+        state: >
+          {% set lux = states('sensor.kitchen_illuminance') | float(0) %}
+          {% if this.state == 'on' %}
+            {{ lux > 20 }}
+          {% else %}
+            {{ lux > 50 }}
+          {% endif %}
+        delay_on: "00:02:00"
+        delay_off: "00:05:00"
+
+      - name: "Living Room Bright"
+        unique_id: living_room_bright
+        device_class: light
+        state: >
+          {% set lux = states('sensor.living_room_illuminance') | float(0) %}
+          {% if this.state == 'on' %}
+            {{ lux > 20 }}
+          {% else %}
+            {{ lux > 50 }}
+          {% endif %}
+        delay_on: "00:02:00"
+        delay_off: "00:05:00"
+
+      - name: "Iryna’s Bedroom Bright"
+        unique_id: irynas_bedroom_bright
+        device_class: light
+        state: >
+          {% set lux = states('sensor.irynas_bedroom_illuminance') | float(0) %}
+          {% if this.state == 'on' %}
+            {{ lux > 20 }}
+          {% else %}
+            {{ lux > 50 }}
+          {% endif %}
+        delay_on: "00:02:00"
+        delay_off: "00:05:00"
+
+      - name: "Semyon’s Bedroom Bright"
+        unique_id: semyons_bedroom_bright
+        device_class: light
+        state: >
+          {% set lux = states('sensor.semyons_bedroom_illuminance') | float(0) %}
+          {% if this.state == 'on' %}
+            {{ lux > 20 }}
+          {% else %}
+            {{ lux > 50 }}
+          {% endif %}
+        delay_on: "00:02:00"
+        delay_off: "00:05:00"
+
+sensor:
+  - platform: min_max
+    name: "Bathroom Illuminance"
+    unique_id: bathroom_illuminance
+    type: mean
+    entity_ids:
+      - sensor.bathroom_sink_illuminance
+      - sensor.shower_illuminance
+    round_digits: 0
+
+homeassistant:
+  customize:
+    sensor.bathroom_illuminance:
+      icon: mdi:brightness-5

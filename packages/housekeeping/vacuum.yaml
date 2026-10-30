@@ -1,0 +1,176 @@
+timer:
+  vacuum:
+    name: Vacuum
+    icon: mdi:robot-vacuum
+    restore: true
+
+  vacuum_mop_drying:
+    name: Vacuum Mop drying
+    icon: mdi:robot-vacuum
+    restore: true
+
+automation:
+  - alias: Vacuum
+    id: vacuum
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: zone.home
+        to: "0"
+        for:
+          minutes: 15
+        id: everyone_left
+      - trigger: state
+        entity_id: person.iryna
+        to: "home"
+        id: iryna_home
+      - trigger: numeric_state
+        entity_id: sensor.home_iryna_distance
+        below: 1
+        id: iryna_approaching
+    actions:
+      - choose:
+          - conditions:
+              - condition: trigger
+                id: everyone_left
+              - alias: "If the robot vacuum hasn't cleaned today"
+                condition: template
+                value_template: >
+                  {{ (states('sensor.bob_last_clean_begin') | as_datetime | as_local).date() != now().date() }}
+                # value_template: >-
+                #   {% set last_cleaning = state_attr('automation.timer_vacuum', 'last_triggered') %}
+                #   {{ last_cleaning.date() != now().date() }}
+              - condition: state
+                entity_id: binary_sensor.bob_cleaning
+                state: "off"
+            sequence:
+              - action: vacuum.set_fan_speed
+                target:
+                  entity_id: vacuum.bob
+                data:
+                  fan_speed: smart_mode
+              - action: vacuum.start
+                target:
+                  entity_id: vacuum.bob
+          - conditions:
+              - condition: state
+                entity_id: binary_sensor.bob_cleaning
+                state: "on"
+              - condition: or
+                conditions:
+                  - condition: trigger
+                    id: iryna_home
+                  - condition: and
+                    conditions:
+                      - condition: trigger
+                        id: iryna_approaching
+                      - condition: state
+                        entity_id: sensor.home_iryna_direction_of_travel
+                        state:
+                          - towards
+                          - arrived
+            sequence:
+              - action: vacuum.pause
+                target:
+                  entity_id: vacuum.bob
+              - action: vacuum.return_to_base
+                target:
+                  entity_id: vacuum.bob
+
+  - alias: Timer - Vacuum
+    id: vacuum_timer
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id:
+          - vacuum.bob
+          - binary_sensor.bob_cleaning
+          - sensor.bob_cleaning_progress
+          - sensor.bob_cleaning_time
+    variables:
+      vacuum_state: "{{ states('vacuum.bob') | lower }}"
+      cleaning_on: "{{ is_state('binary_sensor.bob_cleaning', 'on') }}"
+      progress: >
+        {% set v = states('sensor.bob_cleaning_progress') | float(0) %}
+        {{ [0, [v, 100] | min] | max }}
+      elapsed_seconds: >
+        {{ (states('sensor.bob_cleaning_time') | float(0) * 60) | round(0) | int }}
+      total_seconds: >
+        {% if progress > 0 and elapsed_seconds > 0 %}
+          {{ (elapsed_seconds / (progress / 100)) | round(0, 'ceil') | int }}
+        {% else %}
+          0
+        {% endif %}
+      remaining_seconds: >
+        {% if total_seconds > elapsed_seconds %}
+          {{ total_seconds - elapsed_seconds }}
+        {% else %}
+          1
+        {% endif %}
+    actions:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ vacuum_state in ['returning', 'error'] and cleaning_on }}"
+            sequence:
+              - condition: state
+                entity_id: timer.vacuum
+                state: active
+              - action: timer.pause
+                target:
+                  entity_id: timer.vacuum
+
+          - conditions:
+              - condition: template
+                value_template: "{{ vacuum_state == 'returning' or not cleaning_on }}"
+            sequence:
+              - condition: template
+                value_template: "{{ states('timer.vacuum') in ['active', 'paused'] }}"
+              - action: timer.finish
+                target:
+                  entity_id: timer.vacuum
+
+          - conditions:
+              - condition: template
+                value_template: "{{ vacuum_state == 'cleaning' and remaining_seconds > 0 }}"
+            sequence:
+              - choose:
+                  - conditions:
+                      - condition: state
+                        entity_id: timer.vacuum
+                        state: paused
+                    sequence:
+                      - action: timer.start
+                        target:
+                          entity_id: timer.vacuum
+                  - conditions: []
+                    sequence:
+                      - action: timer.start
+                        target:
+                          entity_id: timer.vacuum
+                        data:
+                          duration: "{{ remaining_seconds }}"
+
+  - alias: Timer - Vacuum Mop drying
+    id: vacuum_mop_drying_timer
+    mode: restart
+    trigger:
+      - trigger: state
+        entity_id: sensor.bob_dock_mop_drying_remaining_time
+        to: null
+    action:
+      - if:
+          - condition: template
+            value_template: >
+              {{ states('sensor.bob_dock_mop_drying_remaining_time') | float(0) > 0 }}
+        then:
+          - action: timer.start
+            target:
+              entity_id: timer.vacuum_mop_drying
+            data:
+              duration: >
+                {{ (states('sensor.bob_dock_mop_drying_remaining_time') | float(0) * 3600) | int }}
+        else:
+          - action: timer.cancel
+            target:
+              entity_id: timer.vacuum_mop_drying

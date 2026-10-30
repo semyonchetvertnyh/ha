@@ -1,0 +1,26 @@
+template:
+  - triggers:
+      - trigger: state
+        entity_id: binary_sensor.entryway_door
+        from: "off"
+        to: "on"
+    conditions:
+      # Внутри квартиры полминуты никто не двигался → дверь открывают снаружи.
+      # Это и отличает вход от выхода.
+      - condition: state
+        entity_id: binary_sensor.kitchen_camera_motion
+        state: "off"
+        for: "00:00:30"
+    binary_sensor:
+      - name: "Entryway Presence"
+        unique_id: entryway_presence
+        device_class: occupancy
+        state: "true"
+        auto_off: "00:03:00"
+
+  - binary_sensor:
+      - name: "Laundry Presence"
+        unique_id: laundry_presence
+        device_class: occupancy
+        state: "{{ is_state('binary_sensor.laundry_door', 'on') }}"
+        delay_off: "00:04:00"

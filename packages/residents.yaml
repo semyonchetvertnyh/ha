@@ -1,0 +1,84 @@
+input_boolean:
+  semyons_sleep_focus_mode:
+    name: "Semyon’s Sleep Focus Mode"
+    icon: mdi:sleep
+
+notify:
+  - platform: group
+    name: "Semyon’s Devices"
+    services:
+      - action: mobile_app_semyons_iphone
+      - action: mobile_app_semyons_ipad_mini
+      - action: mobile_app_semyons_macbook
+
+  - platform: group
+    name: "Iryna’s Devices"
+    services:
+      - action: mobile_app_irynas_iphone
+      - action: mobile_app_irynas_macbook
+
+template:
+
+  - binary_sensor:
+
+      # "Residents Asleep" переехал в sleep.yaml (сон по людям, фаза 1)
+
+      - name: "Guests"
+        unique_id: guests
+        device_class: presence
+        state: >
+          {{ states('sensor.internet_connected_guest_clients')|int > 0 }}
+        availability: >
+          {{ is_number(states('sensor.internet_connected_guest_clients')) }}
+        icon: mdi:human-female-dance
+        attributes:
+          devices: "{{ states('sensor.internet_connected_guest_clients') }}"
+
+      - name: "Semyon In a meeting"
+        unique_id: semyon_in_meeting
+        state: "{{ is_state('binary_sensor.semyons_macbook_camera_in_use', 'on') }}"
+        icon: mdi:laptop-account
+
+  - sensor:
+
+      - name: "Semyon’s Area"
+        unique_id: semyons_area
+        state: >
+          {% if has_value('sensor.semyons_apple_watch_ble_area') %}
+            {{ states('sensor.semyons_apple_watch_ble_area') }}
+          {% else %}
+            {{ states('sensor.semyons_iphone_ble_area') }}
+          {% endif %}
+        availability: >
+          {{ is_state('person.semyon', 'home') }}
+        attributes:
+          source: >
+            {{ 'apple_watch' if has_value('sensor.semyons_apple_watch_ble_area') else 'iphone' }}
+          area_id: >
+            {% if has_value('sensor.semyons_apple_watch_ble_area') %}
+              {{ state_attr('sensor.semyons_apple_watch_ble_area', 'area_id') }}
+            {% else %}
+              {{ state_attr('sensor.semyons_iphone_ble_area', 'area_id') }}
+            {% endif %}
+          entity_picture: "{{ state_attr('person.semyon', 'entity_picture') }}"
+
+      - name: "Iryna’s Area"
+        unique_id: irynas_area
+        state: >
+          {% if has_value('sensor.irynas_apple_watch_ble_area') %}
+            {{ states('sensor.irynas_apple_watch_ble_area') }}
+          {% else %}
+            {{ states('sensor.irynas_iphone_ble_area') }}
+          {% endif %}
+        availability: >
+          {{ is_state('person.iryna', 'home') }}
+        attributes:
+          source: >
+            {{ 'apple_watch' if has_value('sensor.irynas_apple_watch_ble_area') else 'iphone' }}
+          area_id: >
+            {% if has_value('sensor.irynas_apple_watch_ble_area') %}
+              {{ state_attr('sensor.irynas_apple_watch_ble_area', 'area_id') }}
+            {% else %}
+              {{ state_attr('sensor.irynas_iphone_ble_area', 'area_id') }}
+            {% endif %}
+          entity_picture: "{{ state_attr('person.iryna', 'entity_picture') }}"

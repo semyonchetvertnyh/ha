@@ -1,0 +1,36 @@
+cover:
+  - name: "Living Room Shade"
+    unique_id: living_room_shade
+    platform: group
+    entities:
+      - cover.living_room_shade_left
+      - cover.living_room_shade_right
+
+binary_sensor:
+  - name: "Living Room Shade Charging status"
+    unique_id: living_room_shade_charging_status
+    platform: group
+    device_class: battery_charging
+    entities:
+      - binary_sensor.living_room_shade_left_charging_status
+      - binary_sensor.living_room_shade_right_charging_status
+
+sensor:
+  - name: "Living Room Shade Battery"
+    unique_id: living_room_shade_battery
+    platform: min_max
+    entity_ids:
+      - sensor.living_room_shade_left_battery
+      - sensor.living_room_shade_right_battery
+    type: min
+
+homeassistant:
+  customize:
+    binary_sensor.living_room_shade_left_charging_status:
+      device_class: battery_charging
+    binary_sensor.living_room_shade_right_charging_status:
+      device_class: battery_charging
+    binary_sensor.irynas_bedroom_shade_charging_status:
+      device_class: battery_charging
+    binary_sensor.semyons_bedroom_shade_charging_status:
+      device_class: battery_charging

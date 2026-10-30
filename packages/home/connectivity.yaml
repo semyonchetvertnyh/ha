@@ -1,0 +1,18 @@
+binary_sensor:
+  - platform: group
+    name: "Internet"
+    device_class: connectivity
+    entities:
+      - binary_sensor.ping_1_1_1_1
+      - binary_sensor.ping_8_8_8_8
+      - binary_sensor.ping_9_9_9_9
+
+template:
+  - binary_sensor:
+      - name: "Building Entrance Lock Connectivity"
+        unique_id: building_entrance_lock_connectivity
+        device_class: connectivity
+        state: >
+          {{ states('lock.building_entrance') not in ['unavailable', 'unknown'] }}
+        icon: >
+          {{ 'mdi:lock' if this.state else 'mdi:lock-off' }}

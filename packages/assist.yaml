@@ -1,0 +1,452 @@
+script:
+
+  search_google:
+    alias: "Search Google"
+    icon: mdi:google
+    description: >-
+      Makes a Google search to answer questions that are completely unrelated with
+      the smart home and are exclusively about current events or information in
+      real-time like the current president, results of last night's game, release
+      dates, etc.
+    fields:
+      query:
+        name: Query
+        description: The query to search Google for
+        selector:
+          text: null
+        required: true
+    sequence:
+      - action: conversation.process
+        data:
+          agent_id: conversation.google_ai_search
+          text: "{{ query }}"
+        response_variable: result
+      - variables:
+          result:
+            response: "{{ result.response.speech.plain.speech }}"
+      - stop: ""
+        response_variable: result
+
+  apple_find_device:
+    alias: "Find Apple device(s)"
+    icon: mdi:apple
+    description: Send a signal to one or more Apple devices to find them.
+    fields:
+      devices:
+        name: Device(s)
+        description: One or more Apple devices to be found.
+        selector:
+          select:
+            options:
+              - Semyon’s iPhone
+              - Semyon’s Apple Watch
+              - Semyon’s iPad mini
+              - Semyon’s AirPods Pro
+              - Semyon’s AirPods Max
+              - Semyon’s MacBook
+
+              - Iryna’s iPhone
+              - Iryna’s Apple Watch
+              - Iryna’s AirPods
+              - Iryna’s AirPods Pro
+              - Iryna’s MacBook
+            multiple: true
+        required: true
+    variables:
+      device_ids: {
+          "Semyon’s iPhone": "c7a308e67bcaffacfc441ad4742ad92c",
+          "Iryna’s iPhone": "c4f24e98147f4059a16cabd5a99ef28a",
+          # "Semyon’s AirPods Pro": "5f0f7ac35dd9bdf248bf9855e4d458b6",
+          # "Iryna’s AirPods": "",
+
+          # "Semyon’s iPad mini": "8c5318a72f87a00eaa34b9b51fe2797e",
+          # "Semyon’s Apple Watch": "d8352b4cdedb54960ff0c44eedf979b9",
+          # "Semyon’s AirPods Max": "ae23962fc54dca8efa9fffe2001705dc",
+          # "Iryna’s Apple Watch": "303df3a0f4fdb662be873db71bbc35cf",
+        }
+    sequence:
+      - repeat:
+          for_each: "{{ devices }}"
+          sequence:
+            - action: icloud3.find_iphone_alert
+              data:
+                device_name: "{{ device_ids[repeat.item] }}"
+
+  calendar_create_event:
+    alias: "Calendar: Create event"
+    description: >-
+      Creates an event in desired calendar. Provide either start_datetime
+      and end_datetime (timed event), or start_date and end_date (all‑day event). Do
+      not mix date_time fields with date fields in the same request.
+    fields:
+      calendar:
+        name: Calendar
+        description: "Example: calendar.family"
+        example: calendar.family
+        required: true
+        selector:
+          entity:
+            domain: calendar
+      summary:
+        description: Defines the short summary or subject for the event.
+        name: Summary
+        selector:
+          text:
+        required: true
+      description:
+        name: Description
+        description: A more complete description of the event than the one provided
+          by the summary.
+        selector:
+          text:
+      start_datetime:
+        name: Start time
+        description: The date and time the event should start.
+        selector:
+          datetime:
+      end_datetime:
+        name: End time
+        description: The date and time the event should end.
+        selector:
+          datetime:
+      start_date:
+        name: Start date
+        description: The date the all-day event should start.
+        selector:
+          date:
+      end_date:
+        name: End date
+        description: The date the all-day event should end (exclusive).
+        selector:
+          date:
+      location:
+        name: Location
+        description: The location of the event.
+        selector:
+          text:
+    sequence:
+      - choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ start_date is defined and start_date != '' }}"
+          sequence:
+            - action: calendar.create_event
+              target:
+                entity_id: '{{ calendar }}'
+              data:
+                summary: "{{ summary }}"
+                description: "{{ description | default('') }}"
+                start_date: "{{ start_date }}"
+                end_date: "{{ end_date }}"
+                location: "{{ location | default('') }}"
+        - conditions:
+            - condition: template
+              value_template: "{{ start_datetime is defined and start_datetime != '' }}"
+          sequence:
+            - action: calendar.create_event
+              target:
+                entity_id: "{{ calendar }}"
+              data:
+                summary: "{{ summary }}"
+                description: "{{ description | default('') }}"
+                start_date_time: "{{ start_datetime }}"
+                end_date_time: "{{ end_datetime }}"
+                location: "{{ location | default('') }}"
+
+  remind:
+    alias: "Reminders: Add a reminder"
+    icon: mdi:checkbox-marked-circle-auto-outline
+    description: >
+      Adds a reminder with due date to TODO list.
+    fields:
+      text:
+        name: Text
+        description: Text of the reminder.
+        selector:
+          text: null
+        required: true
+      due_date:
+        name: Due Date
+        selector:
+          date:
+      due_datetime:
+        name: Due Date & Time
+        selector:
+          datetime:
+    sequence:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ due_datetime is defined and due_datetime != '' }}"
+            sequence:
+              - action: todo.add_item
+                target:
+                  entity_id: todo.reminders
+                data:
+                  item: "{{ text }}"
+                  due_datetime: "{{ due_datetime }}"
+          - conditions:
+              - condition: template
+                value_template: "{{ due_date is defined and due_date != '' }}"
+            sequence:
+              - action: todo.add_item
+                target:
+                  entity_id: todo.reminders
+                data:
+                  item: "{{ text }}"
+                  due_date: "{{ due_date }}"
+        default:
+          - action: todo.add_item
+            target:
+              entity_id: todo.reminders
+            data:
+              item: "{{ text }}"
+
+  media_play_on_speaker:
+    alias: "Media: Play music on speaker"
+    icon: mdi:speaker
+    description: >-
+      Allows you to play a music in specific speaker.
+    mode: parallel
+    max_exceeded: silent
+    fields:
+      entity_id:
+        name: Speaker
+        description: >-
+          A speaker to play music on,
+          e.g. `media_player.living_room`, `media_player.semyons_bedroom` or `media_player.bathroom`.
+        example: media_player.living_room
+        selector:
+          entity:
+            domain: media_player
+            integration: music_assistant
+        required: true
+      media_type:
+        name: Media Type
+        selector:
+          select:
+            options:
+              - track
+              - album
+              - artist
+              - playlist
+              - radio
+        required: true
+      media_id:
+        name: Media ID
+        description: >-
+          A specific track, an album, an artist, a playlist or a radio name to be played.
+          Prefer English names for radio station names, e.g. "Radio Jazz", not "радио джаз".
+        example: Radio Jazz FM
+        selector:
+          text:
+        required: true
+    sequence:
+      - action: music_assistant.play_media
+        target:
+          entity_id: "{{ entity_id }}"
+        data:
+          media_id: "{{ media_id }}"
+          media_type: "{{ media_type }}"
+          # radio_mode: "{{ false if play_continuously == 'Never' else play_continuously == 'Always' and media_type != 'radio' or 'NA' }}"
+      # - variables:
+      #     shuffle: "{{ shuffle }}"
+      # - alias: Toggle shuffle on a Music Assistant Media Player
+      #   action: media_player.shuffle_set
+      #   target:
+      #     entity_id: "{{ entity_id }}"
+      #   data:
+      #     shuffle: "{{ shuffle }}"
+
+  media_transfer_on_speaker:
+    alias: "Media: Transfer music to speaker"
+    icon: mdi:speaker
+    description: >-
+      Allows you to transfer a music queue from one speaker to another specific speaker.
+    mode: single
+    fields:
+      speaker_to:
+        name: Speaker (To)
+        description: >-
+          A speaker to play music on,
+          e.g. `media_player.living_room`, `media_player.semyons_bedroom` or `media_player.bathroom`.
+        example: media_player.living_room
+        selector:
+          entity:
+            domain: media_player
+            integration: music_assistant
+        required: true
+      speaker_from:
+        name: Speaker (From)
+        description: >-
+          The source media player which has the queue you want to transfer, 
+          e.g. `media_player.living_room`, `media_player.semyons_bedroom` or `media_player.bathroom`.
+          When omitted, the first playing player will be used.
+        example: media_player.bathroom
+        selector:
+          entity:
+            domain: media_player
+            integration: music_assistant
+    sequence:
+      - if:
+          - condition: template
+            value_template: "{{ (speaker_from | trim) == '' }}"
+        then:
+          - action: music_assistant.transfer_queue
+            target:
+              entity_id: "{{ speaker_to }}"
+        else:
+          - action: music_assistant.transfer_queue
+            target:
+              entity_id: "{{ speaker_to }}"
+            data:
+              source_player: "{{ speaker_from }}"
+
+  media_play_on_tv:
+    alias: "Media: Play on TV"
+    icon: mdi:television
+    description: >-
+      Allows you to play a movie, a TV show or a cartoon on Living Room or Iryna's Bedroom TV.
+    fields:
+      entity_id:
+        name: TV
+        description: >-
+          TV to play, e.g. `media_player.living_room_tv` or `media_player.irynas_bedroom_tv`.
+        example: media_player.living_room_tv
+        selector:
+          entity:
+            domain: media_player
+            integration: apple_tv
+        required: true
+      media_library:
+        name: Media library
+        selector:
+          select:
+            options:
+              - Movies
+              - TV Shows
+              - Cartoons
+        required: true
+      media_title:
+        name: Movie, TV show or cartoon title
+        description: A specific movie, a TV show or a cartoon to be played.
+        selector:
+          text: null
+        required: true
+    sequence:
+      - alias: Check if Apple TV is turned on and available, if not, turn it on
+        if:
+          - condition: template
+            value_template: >
+              {{ states(entity_id) in ['off', 'standby'] }}
+        then:
+          - action: media_player.turn_on
+            target:
+              entity_id: "{{ entity_id }}"
+          - wait_template: "{{ states(entity_id, 'on') }}"
+            timeout:
+              seconds: 20
+      - alias: "Find media in Plex"
+        action: rest_command.plex_find_media
+        data:
+          query: "{{ media_title }}"
+        response_variable: plex_response
+      - variables:
+          server_id: !secret plex_server_id
+          media_id: >
+            {{ (
+              plex_response['content']['MediaContainer']['Metadata']
+              | selectattr('librarySectionTitle', 'equalto', media_library)
+              | map(attribute='ratingKey')
+              | first
+            ) }}
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ media_id != '' }}"
+            sequence:
+              - alias: "Open a movie or TV Show to play on Plex"
+                action: media_player.play_media
+                target:
+                  entity_id: "{{ entity_id }}"
+                data:
+                  media_content_type: url
+                  media_content_id: >-
+                    plex://open/?server={{ server_id }}&metadataKey=/library/metadata/{{ media_id }}
+              - delay:
+                  seconds: 2
+              - alias: "Play a movie or TV on Plex"
+                action: media_player.play_media
+                target:
+                  entity_id: "{{ entity_id }}"
+                data:
+                  media_content_type: url
+                  media_content_id: >-
+                    plex://play/?server={{ server_id }}&metadataKey=/library/metadata/{{ media_id }}
+        default:
+          - set_conversation_response: "Movie, TV show or cartoon is not found on Plex."
+
+  media_download_for_tv:
+    alias: "Media: Download for TV"
+    icon: mdi:television
+    description: >-
+      Allows you to download a movie, a TV show or a cartoon for Plex media library.
+    fields:
+      media_library:
+        name: Media library
+        selector:
+          select:
+            options:
+              - Movies
+              - TV Shows
+              - Cartoons
+        required: true
+      media_title:
+        name: Movie, TV show or cartoon title
+        description: A specific movie, a TV show or a cartoon to be played.
+        selector:
+          text: null
+        required: true
+    sequence:
+      - alias: "Find media in Plex"
+        action: rest_command.plex_find_media
+        data:
+          query: "{{ media_title }}"
+        response_variable: plex_response
+      - variables:
+          rating_key: >
+            {{ (
+              plex_response['content']['MediaContainer']['Metadata']
+              | selectattr('librarySectionTitle', 'equalto', media_library)
+              | map(attribute='guid')
+              | first
+              | replace('plex://movie/', '')
+            ) }}
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ rating_key != '' }}"
+            sequence:
+              - alias: "Add to watchlist in Plex"
+                action: rest_command.plex_add_to_watchlist
+                data:
+                  ratingKey: "{{ rating_key }}"
+        default:
+          - set_conversation_response: "Movie, TV show or cartoon is not found on Plex."
+
+rest_command:
+  plex_find_media:
+    url: "http://192.168.4.34:32400/search?query={{ query }}"
+    method: get
+    headers:
+      X-Plex-Token: !secret plex_token
+      Accept: "application/json"
+      User-Agent: "Home Assistant"
+
+  plex_add_to_watchlist:
+    url: "https://metadata.provider.plex.tv/actions/addToWatchlist?ratingKey={{ ratingKey }}"
+    method: put
+    headers:
+      X-Plex-Token: !secret plex_token
+      Accept: "application/json"
+      User-Agent: "Home Assistant"

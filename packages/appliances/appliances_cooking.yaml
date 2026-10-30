@@ -1,0 +1,50 @@
+timer:
+  stove:
+    name: Stove
+    icon: mdi:stove
+    duration: "01:00:00"
+    restore: true
+  oven:
+    name: Oven
+    icon: mdi:microwave
+    duration: "01:30:00"
+    restore: true
+
+template:
+  - binary_sensor:
+      - name: "Stove"
+        unique_id: stove
+        delay_off:
+          minutes: 2
+        state: >
+          {{ states('sensor.stove_power')|float > 5 }}
+        availability: "{{ is_number(states('sensor.stove_power')) }}"
+        device_class: running
+        icon: mdi:stove
+
+      - name: "Oven"
+        unique_id: oven
+        delay_off:
+          minutes: 2
+        state: >
+          {{ states('sensor.oven_power')|float > 5 }}
+        availability: "{{ is_number(states('sensor.oven_power')) }}"
+        device_class: running
+        icon: mdi:microwave
+
+automation:
+  - alias: Timer - Stove
+    id: stove_timer
+    use_blueprint:
+      path: semyonchetvertnyh/timer_sync_to_sensor.yaml
+      input:
+        timer: timer.stove
+        binary_sensor: binary_sensor.stove
+
+  - alias: Timer - Oven
+    id: oven_timer
+    use_blueprint:
+      path: semyonchetvertnyh/timer_sync_to_sensor.yaml
+      input:
+        timer: timer.oven
+        binary_sensor: binary_sensor.oven

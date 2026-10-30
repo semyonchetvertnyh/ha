@@ -1,0 +1,29 @@
+template:
+  - trigger:
+      - trigger: state
+        entity_id: sensor.bathroom_speaker_battery_original
+      - trigger: state
+        entity_id: binary_sensor.bathroom_speaker_charging
+    sensor:
+      - name: "Bathroom Speaker Battery"
+        unique_id: bathroom_speaker_battery
+        state: >
+          {% set v = states('sensor.bathroom_speaker_battery_original') %}
+          {{ v if v not in ['unavailable', 'unknown', 'none'] else this.state }}
+        icon: >
+          {% set pct = (this.state | int(0)) %}
+          {% if pct == 0 %}
+            mdi:battery-unknown
+          {% elif pct == 100 %}
+            mdi:battery
+          {% else %}
+            {% set prc = [10, ((pct // 10) * 10)]|max %}
+            {% if is_state('binary_sensor.bathroom_speaker_charging', 'on') %}
+              mdi:battery-charging-{{ prc }}
+            {% else %}
+              mdi:battery-{{ prc }}
+            {% endif %}
+          {% endif %}
+        device_class: battery
+        state_class: measurement
+        unit_of_measurement: "%"

@@ -1,0 +1,73 @@
+blueprint:
+  name: Sync Timer to Sensor
+  description: >-
+    Synchronize a binary sensor with a timer. When the sensor turns on, the timer starts.
+  domain: automation
+  author: Semyon Chetvertnyh
+  input:
+    timer:
+      name: Timer
+      selector:
+        entity:
+          filter:
+            - domain: timer
+    binary_sensor:
+      name: Binary Sensor
+      selector:
+        entity:
+          filter:
+            - domain: binary_sensor
+              device_class: running
+
+mode: restart
+max_exceeded: silent
+
+triggers:
+  # Sensor -> Timer
+  - platform: state
+    entity_id: !input binary_sensor
+    to: "on"
+    id: sn_on
+  - platform: state
+    entity_id: !input binary_sensor
+    to: "off"
+    id: sn_off
+
+actions:
+  - choose:
+
+      # Sensor включён -> старт таймера
+      - conditions:
+          - condition: trigger
+            id: sn_on
+          - condition: or
+            conditions:
+              - condition: state
+                entity_id: !input timer
+                state: "idle"
+              - condition: state
+                entity_id: !input timer
+                state: "paused"
+        sequence:
+          - service: timer.start
+            target:
+              entity_id: !input timer
+
+      # Sensor выключён -> отмена таймера (если активен/пауза)
+      - conditions:
+          - condition: trigger
+            id: sn_off
+          - condition: or
+            conditions:
+              - condition: state
+                entity_id: !input timer
+                state: "active"
+              - condition: state
+                entity_id: !input timer
+                state: "paused"
+        sequence:
+          - service: timer.cancel
+            target:
+              entity_id: !input timer
+
+    default: []

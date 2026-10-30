@@ -1,0 +1,491 @@
+blueprint:
+  name: Lights - Presence
+  description: >
+    Свет по присутствию для зон с mmWave (Aqara FP2 и подобные).
+
+
+    Отличается от `lights_motion` одним: помнит, кто зажёг свет. Состояние зоны
+    живёт в отдельном `input_select` с тремя значениями:
+
+
+    • `idle` — автосвет зону не держит. Свет может гореть, если его зажёг
+    человек. Отсюда разрешено включать по приходу и запрещено гасить по обычному
+    таймауту.
+
+
+    • `auto` — свет горит, и зажгли его мы. Единственное состояние, из которого
+    разрешено автовыключение.
+
+
+    • `blocked` — человек выключил свет, пока автомат считал его своим. Приход
+    света не включает.
+
+
+    Детектор ручного вмешательства — ветка «свет погас, а состояние было auto».
+    Она работает потому, что в ветке ухода состояние переводится в `idle` ДО
+    вызова light.turn_off, и собственное гашение под условие не попадает. Всё
+    остальное попадает: крутилка, клавиша на стене, HomeKit, приложение Hue,
+    голос, чужой скрипт. Различать их не требуется.
+
+
+    Группы разворачиваются до отдельных ламп, поэтому выключенная лампа внутри
+    Hue-группы тоже считается вмешательством — даже когда остальные лампы группы
+    горят и сама группа остаётся `on`. Разворот добавляет детей к цели и берёт
+    только те, что реально существуют в HA: атрибут `entity_id` у Hue-группы
+    перечисляет лампы МОСТА, и если сущности отдельных ламп в реестре отключены,
+    там лежат несуществующие id в состоянии `unknown`.
+
+
+    Порядок действий в ветке ухода менять нельзя.
+  domain: automation
+  author: Semyon Chetvertnyh
+  # source_url: https://github.com/semyonchetvertnyh/ha/blob/main/blueprints/automation/lights_presence.yaml
+  homeassistant:
+    min_version: "2024.10.0"
+
+  input:
+    devices:
+      name: Датчики и лампы
+      icon: mdi:home-automation
+      input:
+        presence_entity:
+          name: Датчик присутствия
+          selector:
+            entity:
+              domain: binary_sensor
+              device_class: occupancy
+
+        light_target:
+          name: Лампы
+          description: >
+            Селектор сущностей, а не цели: тот же список нужен триггеру, который
+            следит за выключением света.
+
+
+            Группы указывать можно и нужно: включение и выключение уходят в
+            группу одной командой, а триггер разворачивает её в отдельные лампы
+            сам, через атрибут `entity_id`. Перечислять лампы руками не надо —
+            добавленная в Hue-группу лампа подхватится без правки конфига.
+          selector:
+            entity:
+              domain: light
+              multiple: true
+
+        state_helper:
+          name: Состояние зоны
+          description: >
+            `input_select` со значениями `idle`, `auto`, `blocked` именно в таком
+            написании. По одному на зону.
+          selector:
+            entity:
+              domain: input_select
+
+    conditions_section:
+      name: Когда можно включать
+      icon: mdi:check-decagram
+      input:
+        dark_sensor:
+          name: Датчик «светло»
+          description: >
+            Включаем, только когда он `off`. Состояния `unavailable` и `unknown`
+            считаются темнотой: сломавшийся люксметр не должен молча отключать
+            автосвет.
+          selector:
+            entity:
+              domain: binary_sensor
+              device_class: light
+
+        allowed_sensor:
+          name: Глобальное разрешение
+          description: >
+            Обычно `binary_sensor.lights_allowed`. Включаем, только когда `on`.
+          selector:
+            entity:
+              domain: binary_sensor
+
+        block_entities:
+          name: Блокирующие датчики
+          description: >
+            Любой в состоянии `on` запрещает включение. Для спален, стола и
+            прихожей это `binary_sensor.asleep`. Тот же смысл, что в
+            `lights_motion`.
+          default: []
+          selector:
+            entity:
+              domain: binary_sensor
+              multiple: true
+
+        witnesses:
+          name: Независимые свидетели
+          description: >
+            Техника, которая доказывает присутствие независимо от mmWave:
+            телевизор, ноутбук. Считается занятым в состояниях `on`, `playing`,
+            `paused`.
+
+
+            Свидетель блокирует И гашение, И включение, И досрочное снятие
+            блокировки. Симметрия обязательна: иначе при просмотре кино в темноте
+            долгий провал датчика засчитается как новый приход и зажжёт свет.
+          default: null
+          selector:
+            entity:
+              domain:
+                - binary_sensor
+                - media_player
+              multiple: true
+
+    timings:
+      name: Интервалы
+      icon: mdi:timer-outline
+      collapsed: true
+      input:
+        arrive_debounce:
+          name: Подтверждение прихода
+          description: Отсекает короткие всплески датчика.
+          default:
+            seconds: 0
+          selector:
+            duration:
+              enable_second: true
+
+        absence_timeout:
+          name: Гасим после отсутствия
+          description: >
+            Непрерывное отсутствие. Любое мигание датчика обнуляет отсчёт — это и
+            есть защита от сбоя.
+          default:
+            minutes: 10
+          selector:
+            duration:
+              enable_second: true
+
+        empty_release:
+          name: Досрочное снятие блокировки
+          description: >
+            Непрерывное отсутствие, после которого снимается `blocked`, не
+            дожидаясь конца сессии. Нужен для случая «выключил свет, уже выйдя из
+            зоны»: при обычной схеме блокировка держится до конца сессии, и
+            каждый следующий заход отсчёт перезапускает.
+
+
+            Ставить заметно больше типичного провала датчика присутствия: слишком
+            короткое значение снимет блокировку, поставленную человеком, который
+            просто сидит неподвижно. Пока не заполнены свидетели, для зон с
+            неподвижным сидением (телевизор) держать не меньше «Гасим после
+            отсутствия».
+
+
+            Чтобы отключить ветку — выставить равным «Концу сессии».
+          default:
+            minutes: 10
+          selector:
+            duration:
+              enable_second: true
+
+        session_timeout:
+          name: Конец сессии
+          description: >
+            Через сколько снимается `blocked`. Должен быть заметно больше
+            «Гасим после отсутствия»: иначе сбой датчика длиннее таймаута снимет
+            блокировку, которую поставил человек.
+          default:
+            minutes: 20
+          selector:
+            duration:
+              enable_second: true
+
+        failsafe_timeout:
+          name: Предохранитель
+          description: >
+            Гасим безусловно, кто бы ни включил. Страховка от забытого вручную
+            света и от лампы, которую покрутили крутилкой.
+          default:
+            minutes: 30
+          selector:
+            duration:
+              enable_second: true
+
+    fade:
+      name: Плавность
+      icon: mdi:transition
+      collapsed: true
+      input:
+        transition_on:
+          name: Разгорание
+          description: >
+            Длительность перехода при включении, в секундах.
+
+
+            Значение уходит в `light.turn_on` и проходит через перехват Adaptive
+            Lighting. Чтобы они не спорили, выставь такое же `initial_transition`
+            в конфиге AL — у него по умолчанию 1 секунда, и именно она читается
+            как щелчок.
+          default: 3
+          selector:
+            number:
+              min: 0
+              max: 30
+              step: 0.5
+              unit_of_measurement: seconds
+              mode: slider
+
+        transition_off:
+          name: Затухание
+          description: >
+            Длительность перехода при выключении, в секундах. Порядок «сначала
+            `idle`, потом `light.turn_off`» не ломается: пока лампа гаснет, она
+            ещё `on`, и детектор вмешательства молчит.
+
+
+            Для AL команда на выключение своя, поэтому `manual_control` она не
+            ставит — в отличие от ручного приглушения.
+          default: 3
+          selector:
+            number:
+              min: 0
+              max: 30
+              step: 0.5
+              unit_of_measurement: seconds
+              mode: slider
+
+    advanced:
+      name: Дополнительно
+      icon: mdi:tune
+      collapsed: true
+      input:
+        self_automation:
+          name: Эта же автоматизация
+          description: >
+            Укажи здесь саму эту автоматизацию — тогда её включение руками сразу
+            сбрасывает состояние в `idle`.
+
+
+            Выключенная автоматизация замирает вместе со своим состоянием, и
+            через два часа может считать своим свет, которого уже нет.
+            Автоматизация не может увидеть собственное ВЫключение: HA отцепляет
+            триггеры до записи состояния `off`. Поэтому сброс ловится на обратном
+            переходе.
+
+
+            На первом сохранении сущности ещё не существует — оставь поле пустым,
+            сохрани, потом открой и заполни. Без него состояние всё равно
+            рассосётся само за время сессии.
+          default: []
+          selector:
+            entity:
+              domain: automation
+
+mode: queued
+max: 10
+
+variables:
+  blockers: !input block_entities
+  witness_list: !input witnesses
+
+trigger_variables:
+  targets: !input light_target
+  helper: !input state_helper
+
+triggers:
+  - trigger: state
+    entity_id: !input presence_entity
+    from: "off"
+    to: "on"
+    for: !input arrive_debounce
+    id: arrive
+
+  - trigger: state
+    entity_id: !input presence_entity
+    to: "off"
+    for: !input absence_timeout
+    id: leave
+
+  - trigger: state
+    entity_id: !input presence_entity
+    to: "off"
+    for: !input empty_release
+    id: empty_release
+
+  - trigger: state
+    entity_id: !input presence_entity
+    to: "off"
+    for: !input session_timeout
+    id: session_end
+
+  - trigger: state
+    entity_id: !input presence_entity
+    to: "off"
+    for: !input failsafe_timeout
+    id: failsafe
+
+  # Разворот групп: цель ВСЕГДА остаётся в списке наблюдения, дети только
+  # добавляются, и только те, что существуют в HA. Атрибут `entity_id` у
+  # Hue-группы перечисляет лампы МОСТА: при отключённых в реестре сущностях
+  # там лежат id в состоянии `unknown`, они не попадают под фильтр 'off' и
+  # молча оставляют зону вообще без детектора.
+  - alias: Любая лампа зоны погасла мимо нас
+    trigger: template
+    id: light_went_off
+    for: "00:00:05"
+    value_template: >
+      {% set ns = namespace(watch = targets | list) %}
+      {% for e in targets %}
+        {% set raw = state_attr(e, 'entity_id') %}
+        {% if raw is iterable and raw is not string %}
+          {% for k in raw %}
+            {% if states[k] is not none %}
+              {% set ns.watch = ns.watch + [k] %}
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+      {% endfor %}
+      {{ is_state(helper, 'auto')
+         and ns.watch | unique | select('is_state', 'off')
+             | list | count > 0 }}
+
+  - trigger: homeassistant
+    event: start
+    id: reset
+
+  - trigger: state
+    entity_id: !input self_automation
+    from: "off"
+    to: "on"
+    id: reset
+
+actions:
+  - choose:
+      - alias: Приход — включить свет
+        conditions:
+          - condition: trigger
+            id: arrive
+          - condition: state
+            entity_id: !input state_helper
+            state: idle
+          - condition: state
+            entity_id: !input allowed_sensor
+            state: "on"
+          - alias: Темно (unavailable тоже считается темнотой)
+            condition: not
+            conditions:
+              - condition: state
+                entity_id: !input dark_sensor
+                state: "on"
+          - alias: Ни один блокирующий датчик не активен
+            condition: template
+            value_template: >
+              {{ blockers | select('is_state', 'on') | list | count == 0 }}
+          - alias: Свидетели молчат
+            condition: template
+            value_template: >
+              {{ witness_list
+                 | select('is_state', ['on', 'playing', 'paused'])
+                 | list | count == 0 }}
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: !input light_target
+            data:
+              transition: !input transition_on
+          - action: input_select.select_option
+            target:
+              entity_id: !input state_helper
+            data:
+              option: auto
+
+      - alias: Уход — погасить свет
+        conditions:
+          - condition: trigger
+            id: leave
+          - condition: state
+            entity_id: !input state_helper
+            state: auto
+          - alias: Свидетели молчат
+            condition: template
+            value_template: >
+              {{ witness_list
+                 | select('is_state', ['on', 'playing', 'paused'])
+                 | list | count == 0 }}
+        sequence:
+          - action: input_select.select_option
+            target:
+              entity_id: !input state_helper
+            data:
+              option: idle
+          - action: light.turn_off
+            target:
+              entity_id: !input light_target
+            data:
+              transition: !input transition_off
+
+      - alias: Свет погас мимо нас — значит человек
+        conditions:
+          - condition: trigger
+            id: light_went_off
+          - condition: state
+            entity_id: !input state_helper
+            state: auto
+        sequence:
+          - action: input_select.select_option
+            target:
+              entity_id: !input state_helper
+            data:
+              option: blocked
+
+      - alias: Зона опустела — снять блокировку досрочно
+        conditions:
+          - condition: trigger
+            id: empty_release
+          - condition: state
+            entity_id: !input state_helper
+            state: blocked
+          - alias: Свидетели молчат
+            condition: template
+            value_template: >
+              {{ witness_list
+                 | select('is_state', ['on', 'playing', 'paused'])
+                 | list | count == 0 }}
+        sequence:
+          - action: input_select.select_option
+            target:
+              entity_id: !input state_helper
+            data:
+              option: idle
+
+      - alias: Конец сессии — снять блокировку
+        conditions:
+          - condition: trigger
+            id: session_end
+        sequence:
+          - action: input_select.select_option
+            target:
+              entity_id: !input state_helper
+            data:
+              option: idle
+
+      - alias: Предохранитель — погасить в любом случае
+        conditions:
+          - condition: trigger
+            id: failsafe
+        sequence:
+          - action: input_select.select_option
+            target:
+              entity_id: !input state_helper
+            data:
+              option: idle
+          - action: light.turn_off
+            target:
+              entity_id: !input light_target
+            data:
+              transition: !input transition_off
+
+      - alias: Рестарт HA или включение автоматизации — сбросить состояние
+        conditions:
+          - condition: trigger
+            id: reset
+        sequence:
+          - action: input_select.select_option
+            target:
+              entity_id: !input state_helper
+            data:
+              option: idle

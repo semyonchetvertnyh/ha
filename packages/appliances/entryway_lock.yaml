@@ -1,0 +1,294 @@
+timer:
+  entryway_lock:
+    name: Entryway Lock
+    icon: mdi:lock
+    restore: true
+
+automation:
+  - alias: Entryway Lock - Apple HomeKey Reader
+    id: entryway_lock_apple_homekey_reader
+    mode: single
+    # во время delay/wait эхо от ридера отбрасывается молча, без варнингов в логе
+    max_exceeded: silent
+
+    triggers:
+      - trigger: state
+        entity_id: sensor.entryway_lock_battery
+        to: null # Any state (ignoring attribute changes)
+        id: battery_changed
+
+      - trigger: state
+        entity_id: lock.entryway
+        to: null # Any state (ignoring attribute changes)
+        id: physical_changed
+
+      - trigger: mqtt
+        topic: entryway_lock_homekey/homekit/state
+        id: homekey_command
+
+      # Тап HomeKey (телефон/часы). Обычные NFC-метки (homekey: false) игнорируем
+      - trigger: mqtt
+        topic: entryway_lock_homekey/homekey/auth
+        value_template: "{{ value_json.homekey | default(false) }}"
+        payload: "True"
+        id: homekey_tap
+
+    variables:
+      # HomeKey enum
+      HK:
+        UNLOCKED: 0
+        LOCKED: 1
+        JAMMED: 2
+        UNKNOWN: 3
+        UNLOCKING: 4
+        LOCKING: 5
+
+      # Мапа физического -> HomeKey current_state
+      physical_to_current:
+        unlocked: "{{ HK.UNLOCKED }}"
+        open: "{{ HK.UNLOCKED }}"
+        locked: "{{ HK.LOCKED }}"
+        jammed: "{{ HK.JAMMED }}"
+        unknown: "{{ HK.UNKNOWN }}"
+        unavailable: "{{ HK.UNKNOWN }}"
+
+      # Мапа физического -> HomeKey target_state
+      physical_to_target:
+        unlocking: "{{ HK.UNLOCKED }}"
+        unlocked: "{{ HK.UNLOCKED }}"
+        opening: "{{ HK.UNLOCKED }}"
+        open: "{{ HK.UNLOCKED }}"
+        locking: "{{ HK.LOCKED }}"
+        locked: "{{ HK.LOCKED }}"
+
+    actions:
+      - choose:
+
+          - alias: Update battery level via MQTT
+            conditions: "{{ trigger.id == 'battery_changed' }}"
+            sequence:
+              - action: mqtt.publish
+                data:
+                  topic: entryway_lock_homekey/homekit/set_battery_lvl
+                  payload: >
+                    {{ trigger.to_state.state | int(0) }}
+                  qos: "1"
+                  retain: true
+
+          # =========================
+          # PHYSICAL -> HOMEKEY
+          # =========================
+          - alias: Physical lock changed -> sync HomeKey
+            conditions: "{{ trigger.id == 'physical_changed' and trigger.to_state.context.parent_id is none }}"
+            sequence:
+              - variables:
+                  s: "{{ trigger.to_state.state | lower }}"
+
+              - parallel:
+
+                # current_state (только стабильные состояния)
+                - choose:
+                    - conditions: "{{ s in physical_to_current }}"
+                      sequence:
+                        - action: mqtt.publish
+                          data:
+                            topic: entryway_lock_homekey/homekit/set_current_state
+                            payload: "{{ physical_to_current[s] | int }}"
+                            qos: 0
+
+                # target_state (включая переходные)
+                - choose:
+                    - conditions: "{{ s in physical_to_target }}"
+                      sequence:
+                        - action: mqtt.publish
+                          data:
+                            topic: entryway_lock_homekey/homekit/set_target_state
+                            payload: "{{ physical_to_target[s] | int }}"
+                            qos: 0
+
+          # =========================
+          # HOMEKEY TAP, ДВЕРЬ НЕ ЗАПЕРТА -> OPEN
+          # =========================
+          # Проверка last_changed > 3 сек отсекает случай, когда дверь только что
+          # открыли этим же тапом (по homekit/state 0) и auth пришел позже
+          - alias: HomeKey tap while unlocked -> open
+            conditions: >-
+              {{ trigger.id == 'homekey_tap'
+                 and states('lock.entryway') | lower in ['unlocked', 'open']
+                 and (now() - states.lock.entryway.last_changed).total_seconds() > 3 }}
+            sequence:
+              - action: lock.open
+                target:
+                  entity_id: lock.entryway
+              # ридер на тап сам переключился в locked - возвращаем его в unlocked
+              - action: mqtt.publish
+                data:
+                  topic: entryway_lock_homekey/homekit/set_state
+                  payload: "{{ HK.UNLOCKED }}"
+                  qos: 0
+              # держим автоматизацию занятой, чтобы эхо "1" от ридера отбросилось (mode: single)
+              - delay: "00:00:02"
+
+          # =========================
+          # HOMEKEY -> PHYSICAL
+          # =========================
+          - alias: HomeKey command -> physical lock
+            conditions: "{{ trigger.id == 'homekey_command' }}"
+            sequence:
+              - variables:
+                  cmd: "{{ trigger.payload | int }}"
+                  current: "{{ states('lock.entryway') | lower }}"
+
+              - choose:
+
+                  - conditions: "{{ cmd == HK.UNLOCKED | int and current not in ['unlocking', 'unlocked', 'opening', 'open'] }}"
+                    sequence:
+                      - action: lock.open
+                        target:
+                          entity_id: lock.entryway
+
+                  - conditions: "{{ cmd == HK.LOCKED | int and current not in ['locked', 'locking'] }}"
+                    sequence:
+                      # Это может быть не команда "запереть", а эхо тапа HomeKey,
+                      # если state пришел раньше auth. Ждем auth секунду
+                      - wait_for_trigger:
+                          - trigger: mqtt
+                            topic: entryway_lock_homekey/homekey/auth
+                            value_template: "{{ value_json.homekey | default(false) }}"
+                            payload: "True"
+                        timeout: "00:00:01"
+                        continue_on_timeout: true
+
+                      - if: "{{ wait.trigger is none }}"
+                        then:
+                          # auth не было - это настоящая команда (Home app, Siri)
+                          - action: lock.lock
+                            target:
+                              entity_id: lock.entryway
+                        else:
+                          # был тап - открываем вместо запирания
+                          - action: lock.open
+                            target:
+                              entity_id: lock.entryway
+                          - action: mqtt.publish
+                            data:
+                              topic: entryway_lock_homekey/homekit/set_state
+                              payload: "{{ HK.UNLOCKED }}"
+                              qos: 0
+                          - delay: "00:00:02"
+
+#   - alias: Entryway Lock - Apple HomeKey Reader
+#     id: entryway_lock_apple_homekey_reader
+#     mode: single
+
+#     trigger:
+#       - trigger: state
+#         entity_id: sensor.entryway_lock_battery
+#         to: null # Any state (ignoring attribute changes)
+#         id: battery_changed
+
+#       - platform: state
+#         entity_id: lock.entryway
+#         to: null # Any state (ignoring attribute changes)
+#         id: physical_changed
+
+#       - platform: mqtt
+#         topic: entryway_lock_homekey/homekit/state
+#         id: homekey_command
+
+#     variables:
+#       # HomeKey enum
+#       HK:
+#         UNLOCKED: 0
+#         LOCKED: 1
+#         JAMMED: 2
+#         UNKNOWN: 3
+#         UNLOCKING: 4
+#         LOCKING: 5
+
+#       # Мапа физического -> HomeKey current_state
+#       physical_to_current:
+#         unlocked: "{{ HK.UNLOCKED }}"
+#         open: "{{ HK.UNLOCKED }}"
+#         locked: "{{ HK.LOCKED }}"
+#         jammed: "{{ HK.JAMMED }}"
+#         unknown: "{{ HK.UNKNOWN }}"
+#         unavailable: "{{ HK.UNKNOWN }}"
+
+#       # Мапа физического -> HomeKey target_state
+#       physical_to_target:
+#         unlocking: "{{ HK.UNLOCKED }}"
+#         unlocked: "{{ HK.UNLOCKED }}"
+#         opening: "{{ HK.UNLOCKED }}"
+#         open: "{{ HK.UNLOCKED }}"
+#         locking: "{{ HK.LOCKED }}"
+#         locked: "{{ HK.LOCKED }}"
+
+#     action:
+#       - choose:
+
+#           - alias: Update battery level via MQTT
+#             conditions: "{{ trigger.id == 'battery_changed' }}"
+#             sequence:
+#               - action: mqtt.publish
+#                 data:
+#                   topic: entryway_lock_homekey/homekit/set_battery_lvl
+#                   payload: >
+#                     {{ trigger.to_state.state | int(0) }}
+#                   qos: "1"
+#                   retain: true
+
+#           # =========================
+#           # PHYSICAL -> HOMEKEY
+#           # =========================
+#           - conditions: "{{ trigger.id == 'physical_changed' and trigger.to_state.context.parent_id is none }}"
+#             sequence:
+#               - variables:
+#                   s: "{{ trigger.to_state.state | lower }}"
+
+#               - parallel:
+                
+#                 # current_state (только стабильные состояния)
+#                 - choose:
+#                     - conditions: "{{ s in physical_to_current }}"
+#                       sequence:
+#                         - action: mqtt.publish
+#                           data:
+#                             topic: entryway_lock_homekey/homekit/set_current_state
+#                             payload: "{{ physical_to_current[s] | int }}"
+#                             qos: 0
+
+#                 # target_state (включая переходные)
+#                 - choose:
+#                     - conditions: "{{ s in physical_to_target }}"
+#                       sequence:
+#                         - action: mqtt.publish
+#                           data:
+#                             topic: entryway_lock_homekey/homekit/set_target_state
+#                             payload: "{{ physical_to_target[s] | int }}"
+#                             qos: 0
+
+
+#           # =========================
+#           # HOMEKEY -> PHYSICAL
+#           # =========================
+#           - conditions: "{{ trigger.id == 'homekey_command' }}"
+#             sequence:
+#               - variables:
+#                   cmd: "{{ trigger.payload | int }}"
+#                   current: "{{ states('lock.entryway') | lower }}"
+
+#               - choose:
+
+#                   - conditions: "{{ cmd == HK.UNLOCKED | int and current not in ['unlocking', 'unlocked', 'opening', 'open'] }}"
+#                   # - conditions: "{{ cmd == HK.UNLOCKED | int and current not in ['opening', 'open'] }}"
+#                     sequence:
+#                       - action: lock.open
+#                         target:
+#                           entity_id: lock.entryway
+
+#                   - conditions: "{{ cmd == HK.LOCKED | int and current not in ['locked', 'locking'] }}"
+#                     sequence:
+#                       - action: lock.lock
+#                         target:
+#                           entity_id: lock.entryway

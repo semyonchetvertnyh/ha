@@ -1,0 +1,70 @@
+# Min. height:  62 cm
+# Max. height: 127 cm
+# 1% = (127-62) cm / 100% = 0.65 cm
+
+input_number:
+  desk_position_sit:
+    name: Desk Sit Position
+    unit_of_measurement: "%"
+    mode: box
+    initial: 20 # 20% = 75 cm
+    min: 0
+    max: 100
+  desk_position_stand:
+    name: Desk Stand Position
+    unit_of_measurement: "%"
+    mode: box
+    initial: 85 # 85% = 117 cm
+    min: 0
+    max: 100
+
+template:
+  - sensor:
+      - name: "Desk Position"
+        unique_id: desk_position
+        availability: "{{ is_number(state_attr('cover.desk', 'current_position')) }}"
+        state: >
+          {% set position = state_attr('cover.desk', 'current_position') | int(0) %}
+          {% set sit = states('input_number.desk_position_sit') | int(0) %}
+          {% set stand = states('input_number.desk_position_stand') | int(0) %}
+
+          {% if position == sit %}
+            Sit
+          {% elif position == stand %}
+            Stand
+          {% else %}
+            Custom
+          {% endif %}
+        icon: >
+          {% set position = state_attr('cover.desk', 'current_position') | int(0) %}
+          {% set sit = states('input_number.desk_position_sit') | int(0) %}
+          {% set stand = states('input_number.desk_position_stand') | int(0) %}
+
+          {% if position == sit %}
+            mdi:chair-rolling
+          {% elif position == stand %}
+            mdi:human-male-height
+          {% else %}
+            mdi:tune
+          {% endif %}
+
+script:
+  desk_position_go_sit:
+    alias: Desk Position - Go sit
+    icon: mdi:chair-rolling
+    sequence:
+      - action: cover.set_cover_position
+        target:
+          entity_id: cover.desk
+        data:
+          position: "{{ states('input_number.desk_position_sit') }}"
+
+  desk_position_go_stand:
+    alias: Desk Position - Go stand
+    icon: mdi:human-male-height
+    sequence:
+      - action: cover.set_cover_position
+        target:
+          entity_id: cover.desk
+        data:
+          position: "{{ states('input_number.desk_position_stand') }}"

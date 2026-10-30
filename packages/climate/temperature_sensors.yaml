@@ -1,0 +1,48 @@
+template:
+  - sensor:
+
+      - name: "Living Room Temperature"
+        unique_id: living_room_temperature
+        state: "{{ states('sensor.living_room_temperature_sensor_temperature') }}"
+        availability: "{{ has_value('sensor.living_room_temperature_sensor_temperature') }}"
+        device_class: temperature
+        unit_of_measurement: °C
+        state_class: measurement
+      - name: "Living Room Humidity"
+        unique_id: living_room_humidity
+        state: "{{ states('sensor.living_room_temperature_sensor_humidity') | float(0) | round(0) }}"
+        availability: "{{ has_value('sensor.living_room_temperature_sensor_humidity') }}"
+        device_class: humidity
+        unit_of_measurement: "%"
+        state_class: measurement
+
+      - name: "Semyon’s Bedroom Temperature"
+        unique_id: semyons_bedroom_temperature
+        state: "{{ states('sensor.semyons_bedroom_air_monitor_panel_temperature') | float(0) | round(0) }}"
+        availability: "{{ has_value('sensor.semyons_bedroom_air_monitor_panel_temperature') }}"
+        device_class: temperature
+        unit_of_measurement: °C
+        state_class: measurement
+      - name: "Semyon’s Bedroom Humidity"
+        unique_id: semyons_bedroom_humidity
+        state: "{{ states('sensor.semyons_bedroom_air_monitor_panel_humidity') | float(0) | round(0) }}"
+        availability: "{{ has_value('sensor.semyons_bedroom_air_monitor_panel_humidity') }}"
+        device_class: humidity
+        unit_of_measurement: "%"
+        state_class: measurement
+
+sensor:
+  - platform: group
+    name: "Iryna’s Bedroom Temperature"
+    unique_id: irynas_bedroom_temperature
+    type: mean
+    entities:
+      - sensor.irynas_bedroom_presence_sensor_temperature
+      - sensor.irynas_bedroom_air_purifier_temperature
+  - platform: group
+    name: "Iryna’s Bedroom Humidity"
+    unique_id: irynas_bedroom_humidity
+    type: mean
+    entities:
+      - sensor.irynas_bedroom_presence_sensor_humidity
+      - sensor.irynas_bedroom_air_purifier_humidity

@@ -1,0 +1,31 @@
+# Белый список: по умолчанию игнорируется всё, в репо только то, что ниже.
+# Так новые служебные файлы HA (БД, логи, кэши, токены) не попадут в git
+# случайно. Коммитит приложение Filesystem MCP (/addons/filesystem_mcp).
+/*
+
+!/.gitignore
+!/README.md
+!/configuration.yaml
+!/automations.yaml
+!/scripts.yaml
+!/scenes.yaml
+!/go2rtc.yaml
+!/packages/
+!/blueprints/
+!/themes/
+
+# Сознательно НЕ в репо:
+#   secrets.yaml            - пароли и ключи
+#   .storage/               - UI-конфиг, но вместе с токенами интеграций и auth
+#   home-assistant_v2.db*   - recorder, ~460 МБ
+#   zigbee2mqtt/            - network key, coordinator backup
+#   esphome/                - у ESPHome Device Builder свой git внутри
+#   custom_components/, www/ - ставит HACS
+#   *.log, tts/, image/, deps/, .cache/, .cloud/, .ha_mcp/
+
+# на всякий случай и внутри разрешённых папок
+secrets.yaml
+*.db
+*.db-*
+*.log
+.DS_Store

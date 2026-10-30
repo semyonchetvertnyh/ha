@@ -1,0 +1,118 @@
+blueprint:
+  name: Lights - Motion
+  description: >
+    Свет по движению для зон с *дискретным* датчиком: дверной контакт, PIR.
+
+
+    Включает свет, когда датчик срабатывает, и гасит через заданное время
+    после того, как он пропал. Любой из блокирующих датчиков в состоянии `on`
+    запрещает включение — сюда попадают и «светло», и «мы спим», и что угодно
+    ещё.
+
+
+    Не для mmWave. Датчики присутствия теряют неподвижного человека на минуты,
+    и для них нужен `lights_presence` с автоматом состояний.
+
+  domain: automation
+  author: Semyon Chetvertnyh
+  # TODO: заменить на реальный URL файла, иначе не будет работать
+  # «Re-import blueprint» для обновлений на месте.
+  # source_url: https://example.invalid/blueprints/lights_motion.yaml
+  homeassistant:
+    min_version: "2024.10.0"
+
+  input:
+    devices:
+      name: Датчик и лампы
+      icon: mdi:motion-sensor
+      input:
+        motion_entity:
+          name: Датчик движения
+          description: >
+            Дверной контакт, PIR или template-обёртка над ними.
+            Фильтр по device_class намеренно снят: источником события
+            законно бывает и дверь.
+          selector:
+            entity:
+              domain: binary_sensor
+              device_class: occupancy
+
+        light_target:
+          name: Лампы
+          selector:
+            target:
+              entity:
+                - domain: light
+
+    settings:
+      name: Настройки
+      icon: mdi:cog
+      collapsed: true
+      input:
+        no_motion_wait:
+          name: Сколько ждать после пропажи
+          description: Время от пропажи движения до выключения света.
+          default:
+            minutes: 2
+          selector:
+            duration:
+
+        block_entities:
+          name: Блокирующие датчики
+          description: >
+            Любой из них в состоянии `on` запрещает ВКЛЮЧЕНИЕ света.
+            Например `binary_sensor.outdoor_bright` («светло»)
+            и `binary_sensor.asleep` («мы спим»).
+
+
+            Проверяются только в момент включения и никогда не мешают
+            выключению — иначе свет, зажжённый в сумерках, не смог бы
+            погаснуть утром.
+
+
+            Состояния `unavailable` и `unknown` блокировкой не считаются:
+            сломавшийся датчик не должен молча выключать автосвет.
+          default: []
+          selector:
+            entity:
+              domain: binary_sensor
+              multiple: true
+
+mode: restart
+max_exceeded: silent
+
+variables:
+  # !input нельзя использовать внутри шаблона напрямую — только через variables.
+  blockers: !input block_entities
+
+triggers:
+  - trigger: state
+    entity_id: !input motion_entity
+    from: "off"
+    to: "on"
+
+conditions:
+  # Нативным condition: state это не выражается: со списком сущностей он
+  # означает «все разом», а нам нужно «ни один из». Плюс так unavailable
+  # не превращается в блокировку.
+  - condition: template
+    value_template: "{{ blockers | select('is_state', 'on') | list | count == 0 }}"
+
+actions:
+  - alias: Включить свет
+    action: light.turn_on
+    target: !input light_target
+
+  - alias: Дождаться пропажи движения
+    wait_for_trigger:
+      - trigger: state
+        entity_id: !input motion_entity
+        from: "on"
+        to: "off"
+
+  - alias: Выдержать паузу
+    delay: !input no_motion_wait
+
+  - alias: Погасить свет
+    action: light.turn_off
+    target: !input light_target

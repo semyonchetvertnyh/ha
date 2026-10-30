@@ -1,0 +1,49 @@
+binary_sensor:
+  - name: "Balcony Door"
+    unique_id: balcony_door
+    platform: group
+    device_class: door
+    entities:
+      - binary_sensor.balcony_door_left
+      - binary_sensor.balcony_door_right
+
+  - name: "Iryna’s Bedroom Window"
+    unique_id: irynas_bedroom_window
+    platform: group
+    device_class: window
+    entities:
+      - binary_sensor.irynas_bedroom_window_left
+      - binary_sensor.irynas_bedroom_window_right
+
+  - name: "Semyon’s Bedroom Window"
+    unique_id: semyons_bedroom_window
+    platform: group
+    device_class: window
+    entities:
+      - binary_sensor.semyons_bedroom_window_left
+      - binary_sensor.semyons_bedroom_window_right
+
+sensor:
+  - name: "Balcony Door Sensor Battery"
+    unique_id: balcony_door_sensor_battery
+    platform: min_max
+    entity_ids:
+      - sensor.balcony_door_sensor_left_battery
+      - sensor.balcony_door_sensor_right_battery
+    type: min
+
+  - name: "Iryna’s Bedroom Window Sensor Battery"
+    unique_id: irynas_bedroom_window_sensor_battery
+    platform: min_max
+    entity_ids:
+      - sensor.irynas_bedroom_window_sensor_left_battery
+      - sensor.irynas_bedroom_window_sensor_right_battery
+    type: min
+
+  - name: "Semyon’s Bedroom Window Sensor Battery"
+    unique_id: semyons_bedroom_window_sensor_battery
+    platform: min_max
+    entity_ids:
+      - sensor.semyons_bedroom_window_sensor_left_battery
+      - sensor.semyons_bedroom_window_sensor_right_battery
+    type: min

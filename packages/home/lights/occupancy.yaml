@@ -1,0 +1,24 @@
+binary_sensor:
+  - platform: group
+    name: "Kitchen Occupancy"
+    unique_id: kitchen_occupancy
+    device_class: occupancy
+    entities:
+      - binary_sensor.kitchen_countertop_occupancy
+      - binary_sensor.kitchen_dining_table_occupancy
+
+  - platform: group
+    name: "Living Room Occupancy"
+    unique_id: living_room_occupancy
+    device_class: occupancy
+    entities:
+      - binary_sensor.living_room_dining_area_occupancy
+      - binary_sensor.living_room_tv_area_occupancy
+
+  - platform: group
+    name: "Bathroom Occupancy"
+    unique_id: bathroom_occupancy
+    device_class: occupancy
+    entities:
+      - binary_sensor.bathroom_sink_occupancy
+      - binary_sensor.shower_occupancy

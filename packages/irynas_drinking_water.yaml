@@ -1,0 +1,101 @@
+# Goal: 10 glasses (1600 ml)
+
+automation:
+  - alias: "Notifications - Iryna’s Drinking Water"
+    id: notifications_irynas_drinking_water
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id:
+          - schedule.irynas_drinking_water
+        from: "off"
+        to: "on"
+    actions:
+      - action: script.notify
+        data:
+          persons:
+            - person.iryna
+          description: Напомни Ире выпить стакан воды.
+          announce: false
+
+schedule:
+  irynas_drinking_water:
+    name: "Iryna’s Drinking Water"
+    icon: mdi:cup-water
+    monday:
+      - from: "10:30"
+        to: "10:31"
+      - from: "12:30"
+        to: "12:31"
+      - from: "13:30"
+        to: "13:31"
+      - from: "15:30"
+        to: "15:31"
+      - from: "17:30"
+        to: "17:31"
+    tuesday:
+      - from: "10:30"
+        to: "10:31"
+      - from: "12:30"
+        to: "12:31"
+      - from: "13:30"
+        to: "13:31"
+      - from: "15:30"
+        to: "15:31"
+      - from: "17:30"
+        to: "17:31"
+    wednesday:
+      - from: "10:30"
+        to: "10:31"
+      - from: "12:30"
+        to: "12:31"
+      - from: "13:30"
+        to: "13:31"
+      - from: "15:30"
+        to: "15:31"
+      - from: "17:30"
+        to: "17:31"
+    thursday:
+      - from: "10:30"
+        to: "10:31"
+      - from: "12:30"
+        to: "12:31"
+      - from: "13:30"
+        to: "13:31"
+      - from: "15:30"
+        to: "15:31"
+      - from: "17:30"
+        to: "17:31"
+    friday:
+      - from: "10:30"
+        to: "10:31"
+      - from: "12:30"
+        to: "12:31"
+      - from: "13:30"
+        to: "13:31"
+      - from: "15:30"
+        to: "15:31"
+      - from: "17:30"
+        to: "17:31"
+    saturday:
+      - from: "10:30"
+        to: "10:31"
+      - from: "12:30"
+        to: "12:31"
+      - from: "13:30"
+        to: "13:31"
+      - from: "15:30"
+        to: "15:31"
+      - from: "17:30"
+        to: "17:31"
+    sunday:
+      - from: "10:30"
+        to: "10:31"
+      - from: "12:30"
+        to: "12:31"
+      - from: "13:30"
+        to: "13:31"
+      - from: "15:30"
+        to: "15:31"
+      - from: "17:30"
+        to: "17:31"

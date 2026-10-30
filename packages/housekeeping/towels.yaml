@@ -1,0 +1,270 @@
+# =============================================================================
+# Towels — учёт смены полотенец
+# Пакет: config/packages/towels.yaml
+#
+# Логика повторяет пакет Bed Linen:
+#   input_number  — счётчик дней использования (растёт в 05:30)
+#   input_button  — кнопка «сменил», обнуляет счётчик
+#   binary_sensor — device_class: problem, включается при превышении срока
+#   automation    — инкремент счётчиков + сброс по кнопке
+#   automation    — утреннее напоминание через script.notify
+#
+# Срок замены: 4 дней для банных полотенец и 3 дня для полотенца для рук.
+# Чтобы изменить срок — правьте числа в двух местах для каждого полотенца:
+#   1) state: в template -> binary_sensor
+#   2) переменная *_overdue_* в автоматизации уведомлений
+# =============================================================================
+
+input_number:
+  semyons_bath_towel:
+    name: Semyon’s Bath Towel
+    icon: mdi:shower
+    min: 0
+    max: 365
+    step: 1
+    mode: box
+    unit_of_measurement: days
+
+  irynas_bath_towel:
+    name: Iryna’s Bath Towel
+    icon: mdi:shower
+    min: 0
+    max: 365
+    step: 1
+    mode: box
+    unit_of_measurement: days
+
+  hand_towel:
+    name: Hand Towel
+    icon: mdi:hand-wash
+    min: 0
+    max: 365
+    step: 1
+    mode: box
+    unit_of_measurement: days
+
+input_button:
+  semyons_bath_towel_change:
+    name: Change Semyon’s Bath Towel
+    icon: mdi:shower
+
+  irynas_bath_towel_change:
+    name: Change Iryna’s Bath Towel
+    icon: mdi:shower
+
+  hand_towel_change:
+    name: Change Hand Towel
+    icon: mdi:hand-wash
+
+template:
+  - binary_sensor:
+      - name: Semyon’s Bath Towel
+        unique_id: semyons_bath_towel
+        device_class: problem
+        icon: mdi:shower
+        state: "{{ states('input_number.semyons_bath_towel') | int(0) > 7 }}"
+        attributes:
+          days: "{{ states('input_number.semyons_bath_towel') | int(0) }}"
+
+      - name: Iryna’s Bath Towel
+        unique_id: irynas_bath_towel
+        device_class: problem
+        icon: mdi:shower
+        state: "{{ states('input_number.irynas_bath_towel') | int(0) > 7 }}"
+        attributes:
+          days: "{{ states('input_number.irynas_bath_towel') | int(0) }}"
+
+      - name: Hand Towel
+        unique_id: hand_towel
+        device_class: problem
+        icon: mdi:hand-wash
+        state: "{{ states('input_number.hand_towel') | int(0) > 3 }}"
+        attributes:
+          days: "{{ states('input_number.hand_towel') | int(0) }}"
+
+automation:
+  # ---------------------------------------------------------------------------
+  # Счётчики: +1 день в 05:30, сброс в 0 по нажатию кнопки
+  # ---------------------------------------------------------------------------
+  - id: towels
+    alias: Towels
+    description: ""
+    mode: parallel
+    triggers:
+      - trigger: time
+        at: "05:30:00"
+        id: day
+
+      - trigger: state
+        entity_id: input_button.semyons_bath_towel_change
+        id: semyons_change
+
+      - trigger: state
+        entity_id: input_button.irynas_bath_towel_change
+        id: irynas_change
+
+      - trigger: state
+        entity_id: input_button.hand_towel_change
+        id: hand_change
+
+    conditions: []
+
+    actions:
+      - choose:
+          # Новый день — считаем только тем, кто был дома
+          - conditions:
+              - condition: trigger
+                id: day
+            sequence:
+              - if:
+                  - condition: state
+                    entity_id: person.iryna
+                    state: home
+                then:
+                  - action: input_number.increment
+                    target:
+                      entity_id: input_number.irynas_bath_towel
+
+              - if:
+                  - condition: state
+                    entity_id: person.semyon
+                    state: home
+                then:
+                  - action: input_number.increment
+                    target:
+                      entity_id: input_number.semyons_bath_towel
+
+              # Полотенце для рук общее — считаем, если дома был хоть кто-то
+              - if:
+                  - condition: or
+                    conditions:
+                      - condition: state
+                        entity_id: person.iryna
+                        state: home
+                      - condition: state
+                        entity_id: person.semyon
+                        state: home
+                then:
+                  - action: input_number.increment
+                    target:
+                      entity_id: input_number.hand_towel
+
+          # Кнопки «сменил» — обнуление
+          - conditions:
+              - condition: trigger
+                id: semyons_change
+            sequence:
+              - action: input_number.set_value
+                target:
+                  entity_id: input_number.semyons_bath_towel
+                data:
+                  value: 0
+
+          - conditions:
+              - condition: trigger
+                id: irynas_change
+            sequence:
+              - action: input_number.set_value
+                target:
+                  entity_id: input_number.irynas_bath_towel
+                data:
+                  value: 0
+
+          - conditions:
+              - condition: trigger
+                id: hand_change
+            sequence:
+              - action: input_number.set_value
+                target:
+                  entity_id: input_number.hand_towel
+                data:
+                  value: 0
+
+  # ---------------------------------------------------------------------------
+  # Утренние напоминания
+  # ---------------------------------------------------------------------------
+  - id: notifications_towels
+    alias: Notifications - Towels
+    description: ""
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id:
+          - binary_sensor.morning
+        id: morning
+        to: "on"
+
+    conditions: []
+
+    actions:
+      - if:
+          - condition: or
+            conditions:
+              - condition: state
+                entity_id: binary_sensor.irynas_bath_towel
+                state: "on"
+              - condition: state
+                entity_id: binary_sensor.hand_towel
+                state: "on"
+        then:
+          - variables:
+              irynas_overdue_bath_towel: "{{ states('input_number.irynas_bath_towel') | int - 7 }}"
+              irynas_overdue_hand_towel: "{{ states('input_number.hand_towel') | int - 3 }}"
+          - action: script.notify
+            data:
+              announce: false
+              persons:
+                - person.iryna
+              description: >-
+                Это {{ [irynas_overdue_bath_towel, irynas_overdue_hand_towel] | max }}-е напоминание.
+
+
+                Использовалось дольше положенного, поэтому Ирине нужно заменить:
+
+                {% if states('binary_sensor.irynas_bath_towel') == 'on' %}
+
+                - банное полотенце
+
+                {% endif %}
+
+                {% if states('binary_sensor.hand_towel') == 'on' %}
+
+                - полотенце для рук
+
+                {% endif %}
+
+      - if:
+          - condition: or
+            conditions:
+              - condition: state
+                entity_id: binary_sensor.semyons_bath_towel
+                state: "on"
+              - condition: state
+                entity_id: binary_sensor.hand_towel
+                state: "on"
+        then:
+          - variables:
+              semyons_overdue_bath_towel: "{{ states('input_number.semyons_bath_towel') | int - 7 }}"
+              semyons_overdue_hand_towel: "{{ states('input_number.hand_towel') | int - 3 }}"
+          - action: script.notify
+            data:
+              announce: false
+              persons:
+                - person.semyon
+              description: >-
+                Это {{ [semyons_overdue_bath_towel, semyons_overdue_hand_towel] | max }}-е напоминание.
+
+
+                Использовалось дольше положенного, поэтому Семену нужно заменить:
+
+                {% if states('binary_sensor.semyons_bath_towel') == 'on' %}
+
+                - банное полотенце
+
+                {% endif %}
+
+                {% if states('binary_sensor.hand_towel') == 'on' %}
+
+                - полотенце для рук
+
+                {% endif %}

@@ -1,0 +1,203 @@
+blueprint:
+  name: Sync Timer to Switch
+  description: >-
+    Synchronize a switch state with a timer. When the switch turns on, the timer starts.
+    When the timer finishes, the switch can automatically turn off if enabled.
+    Optionally takes the duration from an input_number (seconds) and recalculates
+    the running timer when it changes.
+  domain: automation
+  author: Semyon Chetvertnyh
+  input:
+    timer:
+      name: Timer
+      selector:
+        entity:
+          filter:
+            - domain: timer
+    switch:
+      name: Switch
+      selector:
+        entity:
+          filter:
+            - domain: switch
+    duration:
+      name: Duration (optional)
+      description: >-
+        input_number with the duration in seconds. If empty, the timer's own
+        duration is used.
+      default: ""
+      selector:
+        entity:
+          filter:
+            - domain: input_number
+    turn_off_when_timer_finished:
+      name: Turn off when timer finished
+      description: Turn the switch off automatically when the timer completes.
+      default: true
+      selector:
+        boolean:
+
+mode: restart
+max_exceeded: silent
+
+variables:
+  timer_entity: !input timer
+  duration_entity: !input duration
+  turn_off_when_timer_finished: !input turn_off_when_timer_finished
+
+triggers:
+  # Switch -> Timer
+  - platform: state
+    entity_id: !input switch
+    to: "on"
+    id: sw_on
+  - platform: state
+    entity_id: !input switch
+    to: "off"
+    id: sw_off
+
+  # Timer -> Switch (через события таймера)
+  - platform: event
+    event_type: timer.started
+    event_data:
+      entity_id: !input timer
+    id: t_started
+  - platform: event
+    event_type: timer.finished
+    event_data:
+      entity_id: !input timer
+    id: t_finished
+  - platform: event
+    event_type: timer.cancelled
+    event_data:
+      entity_id: !input timer
+    id: t_cancelled
+
+  # Duration -> Timer (если вход пустой, событие никогда не совпадёт)
+  - platform: event
+    event_type: state_changed
+    event_data:
+      entity_id: !input duration
+    id: dur_changed
+
+actions:
+  - choose:
+
+      # Switch включён -> старт таймера
+      - conditions:
+          - condition: trigger
+            id: sw_on
+          - condition: or
+            conditions:
+              - condition: state
+                entity_id: !input timer
+                state: "idle"
+              - condition: state
+                entity_id: !input timer
+                state: "paused"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ duration_entity != '' and states(duration_entity) | is_number }}"
+            then:
+              - service: timer.start
+                target:
+                  entity_id: !input timer
+                data:
+                  duration: "{{ states(duration_entity) | int }}"
+            else:
+              - service: timer.start
+                target:
+                  entity_id: !input timer
+
+      # Switch выключён -> отмена таймера (если активен/пауза)
+      - conditions:
+          - condition: trigger
+            id: sw_off
+          - condition: or
+            conditions:
+              - condition: state
+                entity_id: !input timer
+                state: "active"
+              - condition: state
+                entity_id: !input timer
+                state: "paused"
+        sequence:
+          - service: timer.cancel
+            target:
+              entity_id: !input timer
+
+      # Длительность изменилась во время работы -> пересчитать конец
+      - conditions:
+          - condition: trigger
+            id: dur_changed
+          - condition: state
+            entity_id: !input timer
+            state: "active"
+          - condition: template
+            value_template: >-
+              {{ trigger.event.data.old_state is not none
+                 and trigger.event.data.new_state is not none
+                 and trigger.event.data.old_state.state | is_number
+                 and trigger.event.data.new_state.state | is_number
+                 and trigger.event.data.old_state.state != trigger.event.data.new_state.state }}
+        sequence:
+          - variables:
+              remaining: >-
+                {{ (as_timestamp(state_attr(timer_entity, 'finishes_at'))
+                    - (trigger.event.data.old_state.state | float)
+                    + (trigger.event.data.new_state.state | float)
+                    - as_timestamp(now())) | int }}
+          - if:
+              - condition: template
+                value_template: "{{ remaining > 0 }}"
+            then:
+              - service: timer.start
+                target:
+                  entity_id: !input timer
+                data:
+                  duration: "{{ remaining }}"
+            else:
+              - service: timer.finish
+                target:
+                  entity_id: !input timer
+
+      # Таймер стартовал -> включить Switch
+      - conditions:
+          - condition: trigger
+            id: t_started
+          - condition: state
+            entity_id: !input switch
+            state: "off"
+        sequence:
+          - service: switch.turn_on
+            target:
+              entity_id: !input switch
+
+      # Таймер отменён, но НЕ завершён -> выключить Switch
+      - conditions:
+          - condition: trigger
+            id: t_cancelled
+          - condition: state
+            entity_id: !input switch
+            state: "on"
+        sequence:
+          - service: switch.turn_off
+            target:
+              entity_id: !input switch
+
+      # Таймер завершён -> выключить Switch
+      - conditions:
+          - condition: trigger
+            id: t_finished
+          - condition: state
+            entity_id: !input switch
+            state: "on"
+          - condition: template
+            value_template: "{{ turn_off_when_timer_finished }}"
+        sequence:
+          - service: switch.turn_off
+            target:
+              entity_id: !input switch
+
+    default: []

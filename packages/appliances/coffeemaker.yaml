@@ -1,0 +1,42 @@
+timer:
+  coffeemaker:
+    name: Coffeemaker
+    icon: mdi:coffee-maker
+    duration: "00:30:00"
+    restore: true
+
+input_datetime:
+  coffeemaker_once_time:
+    name: Coffeemaker Once Time
+    icon: mdi:clock-time-five
+    has_date: false
+    has_time: true
+
+automation:
+  - alias: Timer - Coffeemaker
+    id: coffeemaker_timer
+    use_blueprint:
+      path: semyonchetvertnyh/timer_sync_to_switch.yaml
+      input:
+        timer: timer.coffeemaker
+        switch: switch.coffeemaker
+        turn_off_when_timer_finished: true
+
+  - alias: Coffeemaker Once
+    id: coffeemaker_once
+    description: >
+      This automation is useful when you need to turn on coffeemaker one
+      time at specific time (e.g. before a trip).
+    mode: single
+    trigger:
+      - trigger: time
+        at: input_datetime.coffeemaker_once_time
+    actions:
+      - action: switch.turn_on
+        target:
+          entity_id: switch.coffeemaker
+      - action: automation.turn_off
+        target:
+          entity_id: automation.coffeemaker_once
+        data:
+          stop_actions: false

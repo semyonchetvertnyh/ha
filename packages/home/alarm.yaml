@@ -1,0 +1,20 @@
+alarm_control_panel:
+  - platform: manual
+    name: Home
+    unique_id: home_alarm
+    arming_states:
+      - armed_away
+      # - armed_home
+      # - armed_night
+      # - armed_vacation
+    # code: !secret alarm_code
+
+    # The other states will give 30 seconds to leave the building before triggering the alarm,
+    # and 20 seconds to disarm the alarm when coming back.
+    arming_time: 30
+    delay_time: 20
+
+    # The disarmed state never triggers the alarm.
+    disarmed:
+      trigger_time: 0
+

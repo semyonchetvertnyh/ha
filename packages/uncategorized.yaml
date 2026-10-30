@@ -1,0 +1,21 @@
+scrape:
+  - resource: https://www.seatemperature.org/europe/cyprus/limassol.htm
+    scan_interval: 43200 # 12 hours
+    sensor:
+      - name: "Sea Temperature"
+        unique_id: sea_temperature
+        select: "#big-temp > span.c"
+        value_template: '{{ value | replace("°C", "") | float }}'
+        device_class: temperature
+        unit_of_measurement: °C
+        icon: mdi:pool-thermometer
+
+      - name: "Sea Feels Like"
+        unique_id: sea_feels_like
+        select: "#headline > strong"
+        value_template: '{{ value }}'
+
+homeassistant:
+  customize:
+    media_player.living_room_homepod:
+      device_class: speaker

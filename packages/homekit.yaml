@@ -1,0 +1,281 @@
+homekit:
+  - name: Home Assistant Bridge
+    filter:
+      include_entities:
+
+        - switch.iron
+        - switch.coffeemaker
+        - switch.water_heater
+
+        # Security
+        - alarm_control_panel.home
+        - binary_sensor.entryway_door
+        - binary_sensor.balcony_door
+        - binary_sensor.laundry_door
+        - binary_sensor.irynas_bedroom_window
+        - binary_sensor.semyons_bedroom_window
+        - binary_sensor.bathroom_window
+
+        # Safety
+        - binary_sensor.kitchen_co
+        - binary_sensor.kitchen_smoke
+        - binary_sensor.fridge_leak
+        - binary_sensor.kitchen_sink_leak
+        - binary_sensor.bathroom_sink_leak
+        - binary_sensor.toilet_leak
+        - binary_sensor.washer_leak
+        - binary_sensor.water_collector_leak
+
+        # Occupancy
+        - binary_sensor.kitchen_occupancy
+        - binary_sensor.living_room_dining_area_occupancy
+        - binary_sensor.living_room_tv_area_occupancy
+        - binary_sensor.irynas_bedroom_occupancy
+        - binary_sensor.semyons_bedroom_occupancy
+        - binary_sensor.desk_occupancy
+        - binary_sensor.bathroom_occupancy
+        - binary_sensor.balcony_occupancy
+
+        # Presence
+        - binary_sensor.entryway_presence
+        - binary_sensor.laundry_presence
+
+        # Illuminance
+        - sensor.kitchen_illuminance
+        - sensor.living_room_illuminance
+        - sensor.semyons_bedroom_illuminance
+        - sensor.irynas_bedroom_illuminance
+        - sensor.bathroom_illuminance
+
+        # ACs
+        - climate.living_room_ac
+        - climate.irynas_bedroom_ac
+        - climate.semyons_bedroom_ac
+
+        # Temperature
+        # - sensor.living_room_temperature
+        # - sensor.irynas_bedroom_temperature
+        # - sensor.semyons_bedroom_temperature
+        - sensor.bathroom_temperature
+
+        # Humidity
+        - sensor.living_room_humidity
+        - sensor.irynas_bedroom_humidity
+        - sensor.semyons_bedroom_humidity
+        - sensor.bathroom_humidity
+
+        # Cover
+        - cover.living_room_shade_left
+        - cover.living_room_shade_right
+        - cover.irynas_bedroom_shade
+        - cover.semyons_bedroom_shade
+
+        # Fans
+        - fan.homekit_irynas_bedroom_air_purifier
+
+        # Air Quality
+        - sensor.semyons_bedroom_air_monitor_panel_co2
+        - sensor.semyons_bedroom_air_monitor_panel_pm25
+        - sensor.outdoor_carbon_monoxide_co
+        - sensor.outdoor_pm2_5
+        - sensor.outdoor_pm10
+        - sensor.outdoor_no2_nitrogen_dioxide
+
+        # Lights
+        - light.entryway
+        - light.kitchen_ceiling
+        - light.kitchen_countertop
+        - light.kitchen_dining_table
+        - light.living_room_changing_table
+        - light.living_room_dining_area
+        - light.living_room_tv_area
+        - light.living_room_tv_glow
+        - light.living_room_spotlight
+        - light.hallway
+        - light.irynas_bedroom_ceiling
+        - light.irynas_bedroom_speakers_glow
+        - light.irynas_bedside_lamp
+        - light.semyons_bedroom_ceiling
+        - light.semyons_bedside_lamp
+        - light.semyons_bedroom_bed_end_lamp
+        - light.semyons_bedroom_bed_end_bar
+        - light.desk_monitor_bar
+        - light.bathroom
+        - light.balcony_downlight
+        - light.balcony_floor_lamp
+        - light.laundry
+
+        # Switches
+        - switch.semyons_bedroom_ac_led
+        - select.irynas_bedroom_air_purifier_screen_brightness
+
+        # Heaters
+        # - climate.irynas_bedroom_heater
+        # - climate.semyons_bedroom_heater
+
+        # Christmas
+        # - light.christmas_tree
+
+    entity_config:
+
+      switch.water_heater:
+        type: valve
+        linked_valve_duration: input_number.water_heater_duration
+        linked_valve_end_time: sensor.water_heater_end_time
+
+      # Security
+      alarm_control_panel.home:
+        name: Security
+        # code: !secret alarm_code
+      binary_sensor.balcony_door:
+        name: Balcony Door
+        linked_battery_sensor: sensor.balcony_door_sensor_battery
+      binary_sensor.irynas_bedroom_window:
+        name: Iryna’s Bedroom Window
+        linked_battery_sensor: sensor.irynas_bedroom_window_sensor_battery
+      binary_sensor.semyons_bedroom_window:
+        name: Semyon’s Bedroom Window
+        linked_battery_sensor: sensor.semyons_bedroom_window_sensor_battery
+      binary_sensor.bathroom_window:
+        name: Bathroom Window
+
+      # Safety
+      binary_sensor.kitchen_co:
+        name: Kitchen Gas
+      binary_sensor.kitchen_smoke:
+        name: Kitchen Smoke
+      binary_sensor.fridge_leak:
+        name: Fridge
+      binary_sensor.kitchen_sink_leak:
+        name: Kitchen Sink
+      binary_sensor.bathroom_sink_leak:
+        name: Bathroom Sink
+      binary_sensor.toilet_leak:
+        name: Toilet
+      binary_sensor.washer_leak:
+        name: Washer
+      binary_sensor.water_collector_leak:
+        name: Water Collector
+
+      # Occupancy
+      binary_sensor.living_room_dining_area_occupancy:
+        name: Living Room Dining Area
+      binary_sensor.living_room_tv_area_occupancy:
+        name: Living Room TV Area
+      binary_sensor.desk_occupancy:
+        name: Semyon’s Bedroom Desk
+
+      # ACs
+      # climate.living_room_ac:
+      #   type: heater_cooler
+      # climate.irynas_bedroom_ac:
+      #   type: heater_cooler
+      # climate.semyons_bedroom_ac:
+      #   type: heater_cooler
+
+      # Cover
+      cover.living_room_shade_left:
+        name: Living Room Left Shade
+        linked_battery_charging_sensor: binary_sensor.living_room_shade_left_charging_status
+      cover.living_room_shade_right:
+        name: Living Room Right Shade
+        linked_battery_charging_sensor: binary_sensor.living_room_shade_right_charging_status
+      cover.irynas_bedroom_shade:
+        linked_battery_charging_sensor: binary_sensor.irynas_bedroom_shade_charging_status
+      cover.semyons_bedroom_shade:
+        linked_battery_charging_sensor: binary_sensor.semyons_bedroom_shade_charging_status
+
+      # Fans
+      fan.homekit_irynas_bedroom_air_purifier:
+        name: Iryna’s Bedroom Air Purifier
+        type: air_purifier
+        linked_pm25_sensor: sensor.irynas_bedroom_air_purifier_pm2_5
+        linked_filter_life_level_sensor: sensor.irynas_bedroom_air_purifier_filter_life_level
+
+      # Air Quality
+      sensor.semyons_bedroom_air_monitor_panel_co2:
+        name: Semyon’s Bedroom CO₂
+      sensor.semyons_bedroom_air_monitor_panel_pm25:
+        name: Semyon’s Bedroom Monitor Panel
+      sensor.outdoor_carbon_monoxide_co:
+        name: Balcony CO Carbon monoxide
+      sensor.outdoor_pm2_5:
+        name: Balcony PM₂.₅
+      sensor.outdoor_pm10:
+        name: Balcony PM₁₀
+      sensor.outdoor_no2_nitrogen_dioxide:
+        name: Balcony NO₂ Nitrogen dioxide
+
+      # Lights
+      light.hallway:
+        name: Hallway
+
+      light.irynas_bedroom_ceiling:
+        name: Iryna’s Bedroom Ceiling Light
+      light.irynas_bedside_lamp:
+        name: Iryna’s Bedroom Bedside Lamp
+
+      light.semyons_bedroom_ceiling:
+        name: Semyon’s Bedroom Ceiling Light
+      light.semyons_bedside_lamp:
+        name: Semyon’s Bedroom Bedside Lamp
+      light.semyons_bedside_glow:
+        name: Semyon’s Bedroom Bedside Glow
+      light.desk_monitor_bar:
+        name: Semyon’s Bedroom Desk Bar
+
+      light.bathroom:
+        name: Bathroom Downlights
+
+      light.balcony_downlight:
+        name: Balcony Downlight
+      light.balcony_floor_lamp:
+        name: Balcony Floor Lamp
+
+      # Switches
+      switch.semyons_bedroom_ac_led:
+        name: Semyon’s Bedroom AC
+      select.irynas_bedroom_air_purifier_screen_brightness:
+        name: Iryna’s Bedroom Air Purifier
+
+  - name: HA Building Entrance
+    port: 21065
+    mode: accessory
+    filter:
+      include_entities:
+        - lock.building_entrance
+    entity_config:
+      lock.building_entrance:
+        name: Building Entrance
+
+template:
+
+  - fan:
+      - name: "HomeKit: Iryna’s Bedroom Air Purifier"
+        unique_id: homekit_irynas_bedroom_air_purifier
+        state: "{{ states('fan.irynas_bedroom_air_purifier') }}"
+        percentage: "{{ state_attr('fan.irynas_bedroom_air_purifier', 'percentage') }}"
+        preset_mode: "{{ state_attr('fan.irynas_bedroom_air_purifier', 'preset_mode') }}"
+        turn_on:
+          action: fan.turn_on
+          target:
+            entity_id: fan.irynas_bedroom_air_purifier
+        turn_off:
+          action: fan.turn_off
+          target:
+            entity_id: fan.irynas_bedroom_air_purifier
+        set_percentage:
+          action: fan.set_percentage
+          target:
+            entity_id: fan.irynas_bedroom_air_purifier
+          data:
+            percentage: "{{ percentage }}"
+        set_preset_mode:
+          action: fan.set_preset_mode
+          target:
+            entity_id: fan.irynas_bedroom_air_purifier
+          data:
+            preset_mode: "{{ preset_mode }}"
+        speed_count: 3
+        preset_modes:
+          - Auto

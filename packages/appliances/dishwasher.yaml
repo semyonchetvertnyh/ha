@@ -1,0 +1,96 @@
+homeassistant:
+  customize:
+    sensor.dishwasher_salt_nearly_empty:
+      icon: mdi:grain
+    sensor.dishwasher_rinse_aid_nearly_empty:
+      icon: mdi:bottle-tonic-outline
+
+template:
+  - button:
+      - name: Dishwasher Start program
+        unique_id: dishwasher_start_program
+        icon: mdi:play
+        availability: >
+          {{ is_state('binary_sensor.dishwasher_remote_start', 'on')
+             and is_state('binary_sensor.dishwasher_remote_control', 'on')
+             and is_state('sensor.dishwasher_door', 'closed') }}
+        press:
+          # Issue: https://github.com/home-assistant/core/issues/167619
+          # - action: home_connect.start_selected_program
+          #   data:
+          #     device_id: 6f3ea775945beafcab2013337c395edf
+          - action: home_connect.set_program_and_options
+            data:
+              device_id: 6f3ea775945beafcab2013337c395edf
+              affects_to: active_program
+              program: "{{ states('select.dishwasher_selected_program') }}"
+
+  - binary_sensor:
+      - name: Dishwasher Salt
+        unique_id: dishwasher_salt
+        device_class: problem
+        state: >
+          {{ not is_state('sensor.dishwasher_salt_nearly_empty', 'off') }}
+        availability: >
+          {{ states('sensor.dishwasher_salt_nearly_empty') not in ['unavailable', 'unknown'] }}
+        icon: mdi:grain
+
+      - name: Dishwasher Rinse Aid
+        unique_id: dishwasher_rinse_aid
+        device_class: problem
+        state: >
+          {{ not is_state('sensor.dishwasher_rinse_aid_nearly_empty', 'off') }}
+        availability: >
+          {{ states('sensor.dishwasher_rinse_aid_nearly_empty') not in ['unavailable', 'unknown'] }}
+        icon: mdi:bottle-tonic-outline
+
+timer:
+  dishwasher:
+    name: Dishwasher
+    icon: mdi:dishwasher
+    restore: true
+
+automation:
+  - alias: Timer - Dishwasher
+    id: dishwasher_timer
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: sensor.dishwasher_program_finish_time
+        not_to:
+          - "unknown"
+    actions:
+      - if:
+          - alias: "Finish time is a valid datetime"
+            condition: template
+            value_template: >
+              {% set v = states('sensor.dishwasher_program_finish_time') %}
+              {% set dt = as_datetime(v, default=None) %}
+              {{ dt is not none }}
+        then:
+          - variables:
+              seconds_left: "{{ (as_datetime(states('sensor.dishwasher_program_finish_time')) - now()).total_seconds() | round(0) | int }}"
+          - choose:
+              - alias: "Target time is in the future"
+                conditions:
+                  - condition: template
+                    value_template: "{{ seconds_left > 0 }}"
+                sequence:
+                  - action: timer.start
+                    target:
+                      entity_id: timer.dishwasher
+                    data:
+                      duration: "{{ seconds_left }}"
+              - alias: "Target time is now or in the past"
+                conditions:
+                  - condition: template
+                    value_template: "{{ seconds_left <= 0 }}"
+                sequence:
+                  - action: timer.finish
+                    target:
+                      entity_id: timer.dishwasher
+        else:
+          - action: timer.cancel
+            target:
+              entity_id:
+                - timer.dishwasher

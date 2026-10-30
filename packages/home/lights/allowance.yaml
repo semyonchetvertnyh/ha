@@ -1,0 +1,10 @@
+template:
+  - binary_sensor:
+
+      - name: "Lights Allowed"
+        unique_id: lights_allowed
+        state: >
+          {{ (states('zone.home') | int(0) > 0
+              or (now() - states.zone.home.last_changed).total_seconds() < 600) }}
+        # «кто-то дома, либо ушли меньше десяти минут назад»: защита от кратковременного дрожания GPS.
+        # and not is_state('vacuum.bob','cleaning') }}
