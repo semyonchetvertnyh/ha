@@ -84,7 +84,8 @@ template:
 
   # Ира
   # Легла: в вечерней рамке в её спальне погас ВЕСЬ свет (Glow, верхний, прикроватная) - 2 минуты подряд.
-  #   30.10: одного Glow мало - Ира выключила Glow в 20:30, но верхний свет и лампа горели, она не спала.
+  #   Glow должен быть выключен человеком, а не автоматизацией: 30.10 в 20:30 автосвет
+  #   ("Lights - Iryna's Bedroom") погасил Glow, потому что датчик присутствия потерял Иру, а она не спала.
   #   Ночные кормления (Glow вкл/выкл) сон не сбрасывают.
   # Не спит: включила верхний свет (ночью она пользуется только Glow; лампу не берём - она сама включается ночью из-за бага).
   # Встала: открыла штору в спальне, в утренней рамке.
@@ -93,7 +94,8 @@ template:
         value_template: >
           {{ is_state('light.irynas_bedroom_speakers_glow', 'off')
              and is_state('light.irynas_bedroom_ceiling', 'off')
-             and is_state('light.irynas_bedside_lamp', 'off') }}
+             and is_state('light.irynas_bedside_lamp', 'off')
+             and states.light.irynas_bedroom_speakers_glow.context.parent_id is none }}
         for: "00:02:00"
         id: bed
       - trigger: state
