@@ -20,62 +20,23 @@ automation:
         for:
           minutes: 15
         id: everyone_left
-      - trigger: state
-        entity_id: person.iryna
-        to: "home"
-        id: iryna_home
-      - trigger: numeric_state
-        entity_id: sensor.home_iryna_distance
-        below: 1
-        id: iryna_approaching
+    conditions:
+      - alias: "If the robot vacuum hasn't cleaned today"
+        condition: template
+        value_template: >
+          {{ (states('sensor.bob_last_clean_begin') | as_datetime | as_local).date() != now().date() }}
+      - condition: state
+        entity_id: binary_sensor.bob_cleaning
+        state: "off"
     actions:
-      - choose:
-          - conditions:
-              - condition: trigger
-                id: everyone_left
-              - alias: "If the robot vacuum hasn't cleaned today"
-                condition: template
-                value_template: >
-                  {{ (states('sensor.bob_last_clean_begin') | as_datetime | as_local).date() != now().date() }}
-                # value_template: >-
-                #   {% set last_cleaning = state_attr('automation.timer_vacuum', 'last_triggered') %}
-                #   {{ last_cleaning.date() != now().date() }}
-              - condition: state
-                entity_id: binary_sensor.bob_cleaning
-                state: "off"
-            sequence:
-              - action: vacuum.set_fan_speed
-                target:
-                  entity_id: vacuum.bob
-                data:
-                  fan_speed: smart_mode
-              - action: vacuum.start
-                target:
-                  entity_id: vacuum.bob
-          - conditions:
-              - condition: state
-                entity_id: binary_sensor.bob_cleaning
-                state: "on"
-              - condition: or
-                conditions:
-                  - condition: trigger
-                    id: iryna_home
-                  - condition: and
-                    conditions:
-                      - condition: trigger
-                        id: iryna_approaching
-                      - condition: state
-                        entity_id: sensor.home_iryna_direction_of_travel
-                        state:
-                          - towards
-                          - arrived
-            sequence:
-              - action: vacuum.pause
-                target:
-                  entity_id: vacuum.bob
-              - action: vacuum.return_to_base
-                target:
-                  entity_id: vacuum.bob
+      - action: vacuum.set_fan_speed
+        target:
+          entity_id: vacuum.bob
+        data:
+          fan_speed: smart_mode
+      - action: vacuum.start
+        target:
+          entity_id: vacuum.bob
 
   - alias: Timer - Vacuum
     id: vacuum_timer
