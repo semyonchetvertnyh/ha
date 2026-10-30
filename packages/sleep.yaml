@@ -162,8 +162,9 @@ automation:
         target:
           entity_id: switch.adaptive_lighting_sleep_mode
 
-  # Ванная (экземпляр Bathroom): ночной режим, пока спит хоть кто-то из нас -
-  # ночные выходы между кормлениями тусклые. Никто не спит - обычный режим.
+  # Ванная (экземпляр Bathroom): ночной режим, когда спят все, кто дома -
+  # ночные выходы тусклые. Пока кто-то не спит - обычный режим
+  # (30.10: "пока спит хоть кто-то" делало ванную тёмной в 20:30, когда Ира уже легла, а Семён нет).
   # Сам экземпляр настроен ярче остальных (min_brightness 50%, закат сдвинут на +2 ч),
   # чтобы вечером при купании Каи хватало света.
   - alias: Sleep - Bathroom
@@ -171,20 +172,13 @@ automation:
     mode: restart
     triggers:
       - trigger: state
-        entity_id:
-          - binary_sensor.semyon_asleep
-          - binary_sensor.iryna_asleep
+        entity_id: binary_sensor.residents_asleep
         to: ["on", "off"]
     actions:
       - if:
-          - condition: or
-            conditions:
-              - condition: state
-                entity_id: binary_sensor.semyon_asleep
-                state: "on"
-              - condition: state
-                entity_id: binary_sensor.iryna_asleep
-                state: "on"
+          - condition: state
+            entity_id: binary_sensor.residents_asleep
+            state: "on"
         then:
           # если кто-то в ванной - не менять свет у него на глазах:
           # сохранить текущий свет и вернуть его после включения Sleep Mode
