@@ -158,28 +158,61 @@ automation:
         from: "off"
         to: "on"
     actions:
-      # если кто-то в ванной - сохранить текущий свет и вернуть его после включения Sleep Mode
-      - if:
-          - condition: state
-            entity_id: binary_sensor.bathroom_occupancy
-            state: "on"
-        then:
-          - action: scene.create
-            data:
-              scene_id: bathroom_downlights_before
-              snapshot_entities:
-                - light.bathroom
       - action: switch.turn_on
         target:
           entity_id: switch.adaptive_lighting_sleep_mode
+
+  # Ванная (экземпляр Bathroom): ночной режим, пока спит хоть кто-то из нас -
+  # ночные выходы между кормлениями тусклые. Никто не спит - обычный режим.
+  # Сам экземпляр настроен ярче остальных (min_brightness 50%, закат сдвинут на +2 ч),
+  # чтобы вечером при купании Каи хватало света.
+  - alias: Sleep - Bathroom
+    id: sleep_bathroom
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id:
+          - binary_sensor.semyon_asleep
+          - binary_sensor.iryna_asleep
+        to: ["on", "off"]
+    actions:
       - if:
-          - condition: state
-            entity_id: binary_sensor.bathroom_occupancy
-            state: "on"
+          - condition: or
+            conditions:
+              - condition: state
+                entity_id: binary_sensor.semyon_asleep
+                state: "on"
+              - condition: state
+                entity_id: binary_sensor.iryna_asleep
+                state: "on"
         then:
-          - action: scene.turn_on
+          # если кто-то в ванной - не менять свет у него на глазах:
+          # сохранить текущий свет и вернуть его после включения Sleep Mode
+          - if:
+              - condition: state
+                entity_id: binary_sensor.bathroom_occupancy
+                state: "on"
+            then:
+              - action: scene.create
+                data:
+                  scene_id: bathroom_downlights_before
+                  snapshot_entities:
+                    - light.bathroom
+          - action: switch.turn_on
             target:
-              entity_id: scene.bathroom_downlights_before
+              entity_id: switch.adaptive_lighting_bathroom_sleep_mode
+          - if:
+              - condition: state
+                entity_id: binary_sensor.bathroom_occupancy
+                state: "on"
+            then:
+              - action: scene.turn_on
+                target:
+                  entity_id: scene.bathroom_downlights_before
+        else:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.adaptive_lighting_bathroom_sleep_mode
 
   # Первый проснувшийся - утро в общих зонах. Спальня второго не трогается.
   # Заменяет ветку "morning" автоматизации "Adaptive Lighting Sleep Mode".
