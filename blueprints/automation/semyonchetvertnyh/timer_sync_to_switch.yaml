@@ -47,13 +47,20 @@ variables:
 
 triggers:
   # Switch -> Timer
+  # Переподключение реле (unknown/unavailable -> on/off) не считается включением/выключением
   - platform: state
     entity_id: !input switch
     to: "on"
+    not_from:
+      - unknown
+      - unavailable
     id: sw_on
   - platform: state
     entity_id: !input switch
     to: "off"
+    not_from:
+      - unknown
+      - unavailable
     id: sw_off
 
   # Timer -> Switch (через события таймера)
