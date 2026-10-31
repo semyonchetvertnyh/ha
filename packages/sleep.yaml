@@ -172,69 +172,85 @@ template:
              and (not i or is_state('binary_sensor.iryna_asleep', 'on')) }}
 
 automation:
-  # Все, кто дома, уснули - ночной режим AL в общих зонах (экземпляр Home).
-  # Заменяет ветку "night" автоматизации "Adaptive Lighting Sleep Mode".
-  - alias: Sleep - Residents Asleep
-    id: sleep_residents_asleep
-    mode: single
-    triggers:
-      - trigger: state
-        entity_id: binary_sensor.residents_asleep
-        from: "off"
-        to: "on"
-    actions:
-      - action: switch.turn_on
-        target:
-          entity_id: switch.adaptive_lighting_sleep_mode
-
-  # Ванная (экземпляр Bathroom): ночной режим, когда спят все, кто дома -
-  # ночные выходы тусклые. Пока кто-то не спит - обычный режим
-  # (30.10: "пока спит хоть кто-то" делало ванную тёмной в 20:30, когда Ира уже легла, а Семён нет).
-  # Сам экземпляр настроен ярче остальных (min_brightness 50%, закат сдвинут на +2 ч),
-  # чтобы вечером при купании Каи хватало света.
-  - alias: Sleep - Bathroom
-    id: sleep_bathroom
-    mode: restart
+  # Ночной режим AL по зонам - зеркалит датчики сна:
+  #   Home (общие зоны) и Bathroom - пока спят все, кто дома (residents_asleep);
+  #   Iryna's Bedroom - пока спит Ира (iryna_asleep).
+  # Ванная: Bathroom-экземпляр ярче остальных (min_brightness 50%, закат +2 ч) для вечернего купания Каи;
+  #   30.10 "пока спит хоть кто-то" делало ванную тёмной в 20:30, поэтому тоже по residents_asleep.
+  # Заменяет старую UI-автоматизацию "Adaptive Lighting Sleep Mode" (по night/morning).
+  - alias: Adaptive Lighting - Sleep Mode
+    id: adaptive_lighting_sleep_mode
+    mode: queued
     triggers:
       - trigger: state
         entity_id: binary_sensor.residents_asleep
         to: ["on", "off"]
+        id: residents
+      - trigger: state
+        entity_id: binary_sensor.iryna_asleep
+        to: ["on", "off"]
+        id: iryna
     actions:
-      - if:
-          - condition: state
-            entity_id: binary_sensor.residents_asleep
-            state: "on"
-        then:
-          # если кто-то в ванной - не менять свет у него на глазах:
-          # сохранить текущий свет и вернуть его после включения Sleep Mode
-          - if:
+      - choose:
+          - conditions:
+              - condition: trigger
+                id: residents
               - condition: state
-                entity_id: binary_sensor.bathroom_occupancy
+                entity_id: binary_sensor.residents_asleep
                 state: "on"
-            then:
-              - action: scene.create
-                data:
-                  scene_id: bathroom_downlights_before
-                  snapshot_entities:
-                    - light.bathroom
-          - action: switch.turn_on
-            target:
-              entity_id: switch.adaptive_lighting_bathroom_sleep_mode
-          - if:
-              - condition: state
-                entity_id: binary_sensor.bathroom_occupancy
-                state: "on"
-            then:
-              - action: scene.turn_on
+            sequence:
+              # кто-то в ванной - не менять свет у него на глазах: сохранить и вернуть
+              - if:
+                  - condition: state
+                    entity_id: binary_sensor.bathroom_occupancy
+                    state: "on"
+                then:
+                  - action: scene.create
+                    data:
+                      scene_id: bathroom_downlights_before
+                      snapshot_entities:
+                        - light.bathroom
+              - action: switch.turn_on
                 target:
-                  entity_id: scene.bathroom_downlights_before
-        else:
-          - action: switch.turn_off
-            target:
-              entity_id: switch.adaptive_lighting_bathroom_sleep_mode
+                  entity_id:
+                    - switch.adaptive_lighting_sleep_mode
+                    - switch.adaptive_lighting_bathroom_sleep_mode
+              - if:
+                  - condition: state
+                    entity_id: binary_sensor.bathroom_occupancy
+                    state: "on"
+                then:
+                  - action: scene.turn_on
+                    target:
+                      entity_id: scene.bathroom_downlights_before
+          - conditions:
+              - condition: trigger
+                id: residents
+            sequence:
+              - action: switch.turn_off
+                target:
+                  entity_id:
+                    - switch.adaptive_lighting_sleep_mode
+                    - switch.adaptive_lighting_bathroom_sleep_mode
+          - conditions:
+              - condition: trigger
+                id: iryna
+              - condition: state
+                entity_id: binary_sensor.iryna_asleep
+                state: "on"
+            sequence:
+              - action: switch.turn_on
+                target:
+                  entity_id: switch.adaptive_lighting_iryna_s_bedroom_sleep_mode
+          - conditions:
+              - condition: trigger
+                id: iryna
+            sequence:
+              - action: switch.turn_off
+                target:
+                  entity_id: switch.adaptive_lighting_iryna_s_bedroom_sleep_mode
 
-  # Первый проснувшийся - утро в общих зонах. Спальня второго не трогается.
-  # Заменяет ветку "morning" автоматизации "Adaptive Lighting Sleep Mode".
+  # Первый проснувшийся утром - открыть шторы в гостиной. Спальня второго не трогается.
   - alias: Sleep - First Wake
     id: sleep_first_wake
     mode: single
@@ -249,29 +265,11 @@ automation:
         entity_id: binary_sensor.wakeup_window
         state: "on"
     actions:
-      - action: switch.turn_off
-        target:
-          entity_id: switch.adaptive_lighting_sleep_mode
       - action: cover.open_cover
         target:
           entity_id: cover.living_room_shade
 
-  # Ира легла - ночной режим AL в её спальне (экземпляр Iryna's Bedroom).
-  - alias: Sleep - Iryna Asleep
-    id: sleep_iryna_asleep
-    mode: single
-    triggers:
-      - trigger: state
-        entity_id: binary_sensor.iryna_asleep
-        from: "off"
-        to: "on"
-    actions:
-      - action: switch.turn_on
-        target:
-          entity_id: switch.adaptive_lighting_iryna_s_bedroom_sleep_mode
-
-  # Ира встала - выключить ночной режим AL в её спальне и её прикроватную лампу.
-  # Заменяет light.turn_off из ветки "morning" автоматизации "Adaptive Lighting Sleep Mode".
+  # Ира встала утром - выключить её прикроватную лампу (она сама включается ночью из-за бага).
   - alias: Sleep - Iryna Up
     id: sleep_iryna_up
     mode: single
@@ -280,16 +278,11 @@ automation:
         entity_id: binary_sensor.iryna_asleep
         from: "on"
         to: "off"
+    conditions:
+      - condition: state
+        entity_id: binary_sensor.wakeup_window
+        state: "on"
     actions:
-      - action: switch.turn_off
+      - action: light.turn_off
         target:
-          entity_id: switch.adaptive_lighting_iryna_s_bedroom_sleep_mode
-      # лампу гасим только утром (вечером "не спит" значит, что лампой пользуются)
-      - if:
-          - condition: state
-            entity_id: binary_sensor.wakeup_window
-            state: "on"
-        then:
-          - action: light.turn_off
-            target:
-              entity_id: light.irynas_bedside_lamp
+          entity_id: light.irynas_bedside_lamp
