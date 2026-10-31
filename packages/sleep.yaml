@@ -269,20 +269,3 @@ automation:
         target:
           entity_id: cover.living_room_shade
 
-  # Ира встала утром - выключить её прикроватную лампу (она сама включается ночью из-за бага).
-  - alias: Sleep - Iryna Up
-    id: sleep_iryna_up
-    mode: single
-    triggers:
-      - trigger: state
-        entity_id: binary_sensor.iryna_asleep
-        from: "on"
-        to: "off"
-    conditions:
-      - condition: state
-        entity_id: binary_sensor.wakeup_window
-        state: "on"
-    actions:
-      - action: light.turn_off
-        target:
-          entity_id: light.irynas_bedside_lamp
