@@ -29,7 +29,8 @@ template:
   #   а он в спальне - 5 минут подряд, в вечерней рамке.
   # Не спит: сидит за столом 15 минут (работает ночью) - в любое время.
   #   15 минут, потому что датчик стола ночью ложно видит кого-то на 3-10 минут (25.10, 27.10, 30.10).
-  # Встал: открыл штору в спальне или включил кофеварку руками, в утренней рамке.
+  # Встал: открыл штору в спальне, в утренней рамке.
+  #   Кофеварку убрали 31.10: её может включить кто угодно (гости), пока Семён спит.
   # Страховка 04:00 не срабатывает, если он в этот момент за столом или в спальне горит свет.
   - triggers:
       - trigger: state
@@ -50,11 +51,6 @@ template:
         from: "closed"
         to: ["opening", "open"]
         id: up
-      - trigger: state
-        entity_id: switch.coffeemaker
-        from: "off"
-        to: "on"
-        id: coffee
       - trigger: state
         entity_id: binary_sensor.bedtime_window
         from: "on"
@@ -82,9 +78,6 @@ template:
             {{ bed or was }}
           {% elif trigger.id == 'up' %}
             {{ was and not wake }}
-          {% elif trigger.id == 'coffee' %}
-            {# кофеварку, включённую автоматизацией (Coffeemaker Once), не считаем #}
-            {{ was and not (wake and trigger.to_state.context.parent_id is none) }}
           {% elif trigger.id == 'desk' %}
             false
           {% elif trigger.id == 'bed_fallback' %}
@@ -262,30 +255,6 @@ automation:
       - action: cover.open_cover
         target:
           entity_id: cover.living_room_shade
-
-  # Семён встал по кофеварке, а штора в его спальне закрыта - открыть её.
-  - alias: Sleep - Semyon Up by Coffee
-    id: sleep_semyon_up_by_coffee
-    mode: single
-    triggers:
-      - trigger: state
-        entity_id: binary_sensor.semyon_asleep
-        from: "on"
-        to: "off"
-    conditions:
-      - condition: state
-        entity_id: switch.coffeemaker
-        state: "on"
-      - condition: template
-        value_template: >
-          {{ now() - states.switch.coffeemaker.last_changed < timedelta(minutes=1) }}
-      - condition: state
-        entity_id: cover.semyons_bedroom_shade
-        state: "closed"
-    actions:
-      - action: cover.open_cover
-        target:
-          entity_id: cover.semyons_bedroom_shade
 
   # Ира легла - ночной режим AL в её спальне (экземпляр Iryna's Bedroom).
   - alias: Sleep - Iryna Asleep
