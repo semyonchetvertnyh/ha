@@ -323,31 +323,49 @@
   mode: single
 - id: '1760457882183'
   alias: Shades
-  description: ''
+  description: 'Закат: закрыть все шторы. Уснул человек - закрыть его штору; уснули
+    все - закрыть гостиную (вместо night в 22:30). Первый проснулся в утреннем окне
+    - открыть гостиную.'
   triggers:
-  - trigger: state
-    entity_id: binary_sensor.residents_asleep
+  - entity_id: binary_sensor.residents_asleep
     from: 'on'
-    to: 'off'
     id: morning
-  - id: dusk
+    to: 'off'
+    trigger: state
+  - at: sensor.sun_next_dusk
+    id: dusk
     trigger: time
-    at: sensor.sun_next_dusk
-  - trigger: state
-    entity_id:
-    - binary_sensor.night
+  - entity_id: binary_sensor.semyon_asleep
+    id: semyon_bed
+    not_from:
+    - unavailable
+    - unknown
     to: 'on'
-    id: night
-  - trigger: state
+    trigger: state
+  - entity_id: binary_sensor.iryna_asleep
+    id: iryna_bed
+    not_from:
+    - unavailable
+    - unknown
+    to: 'on'
+    trigger: state
+  - entity_id: binary_sensor.residents_asleep
+    id: residents_bed
+    not_from:
+    - unavailable
+    - unknown
+    to: 'on'
+    trigger: state
+  - enabled: false
     entity_id: zone.home
-    to: '0'
     id: leaving
+    to: '0'
+    trigger: state
+  - above: 0
     enabled: false
-  - trigger: numeric_state
     entity_id: zone.home
-    above: 0
     id: approaching
-    enabled: false
+    trigger: numeric_state
   conditions: []
   actions:
   - choose:
@@ -359,27 +377,49 @@
         options: {}
       sequence:
       - action: cover.open_cover
+        data: {}
         target:
           entity_id:
           - cover.living_room_shade
           - cover.semyons_bedroom_shade
           - cover.irynas_bedroom_shade
-        data: {}
     - conditions:
       - condition: trigger
         id:
         - dusk
-        - night
         - leaving
       sequence:
       - action: cover.close_cover
+        data: {}
         target:
           entity_id:
           - cover.living_room_shade
           - cover.semyons_bedroom_shade
           - cover.irynas_bedroom_shade
+    - conditions:
+      - condition: trigger
+        id: semyon_bed
+      sequence:
+      - action: cover.close_cover
         data: {}
-        enabled: true
+        target:
+          entity_id: cover.semyons_bedroom_shade
+    - conditions:
+      - condition: trigger
+        id: iryna_bed
+      sequence:
+      - action: cover.close_cover
+        data: {}
+        target:
+          entity_id: cover.irynas_bedroom_shade
+    - conditions:
+      - condition: trigger
+        id: residents_bed
+      sequence:
+      - action: cover.close_cover
+        data: {}
+        target:
+          entity_id: cover.living_room_shade
     - conditions:
       - condition: trigger
         id:
@@ -389,11 +429,11 @@
         state: 'on'
       sequence:
       - action: cover.open_cover
+        data: {}
         target:
           entity_id:
           - cover.living_room_shade
-        data: {}
-  mode: single
+  mode: queued
 - id: '1760812707069'
   alias: Notifications - Vacuum
   description: ''
@@ -444,9 +484,9 @@
   mode: single
 - id: '1761231836888'
   alias: Iryna’s Bedroom Air Purifier
-  description: Днём - по присутствию в комнате. Ночью (с binary_sensor.night до 08:00)
-    работает без перерывов, если Ира дома, экран выключен. Утром (binary_sensor.morning)
-    экран включается. 08:00 - временно вручную, пока не разобрались с night/morning/quiet_hours.
+  description: Днём - по присутствию в комнате. Пока Ира спит (binary_sensor.iryna_asleep)
+    - работает без перерывов, экран выключен. Проснулась - экран включается, дальше
+    по присутствию. Раньше было по night/morning и 08:00.
   triggers:
   - id: presence
     options:
@@ -464,31 +504,30 @@
     id: iryna_home
     to: home
     trigger: state
-  - entity_id: binary_sensor.morning
-    id: morning
+  - entity_id: binary_sensor.iryna_asleep
+    id: asleep
+    not_from:
+    - unavailable
+    - unknown
     to: 'on'
     trigger: state
-  - entity_id: binary_sensor.night
-    id: night
-    to: 'on'
+  - entity_id: binary_sensor.iryna_asleep
+    from: 'on'
+    id: awake
+    to: 'off'
     trigger: state
   conditions: []
   actions:
   - choose:
     - conditions:
       - condition: trigger
-        id: night
+        id: asleep
       sequence:
-      - if:
-        - condition: state
-          entity_id: person.iryna
-          state: home
-        then:
-        - action: fan.turn_on
-          data:
-            preset_mode: Auto
-          target:
-            entity_id: fan.irynas_bedroom_air_purifier
+      - action: fan.turn_on
+        data:
+          preset_mode: Auto
+        target:
+          entity_id: fan.irynas_bedroom_air_purifier
       - action: select.select_option
         data:
           option: 'Off'
@@ -506,10 +545,8 @@
         - condition: trigger
           id: presence
         - condition: state
-          entity_id: binary_sensor.night
+          entity_id: binary_sensor.iryna_asleep
           state: 'on'
-        - condition: time
-          before: 08:00:00
       sequence:
       - action: fan.turn_on
         data:
@@ -517,12 +554,9 @@
         target:
           entity_id: fan.irynas_bedroom_air_purifier
       - if:
-        - or:
-          - condition: state
-            entity_id: binary_sensor.night
-            state: 'on'
-          - condition: time
-            before: 08:00:00
+        - condition: state
+          entity_id: binary_sensor.iryna_asleep
+          state: 'on'
         then:
         - action: select.select_option
           data:
@@ -533,17 +567,15 @@
       - condition: trigger
         id: absence
       - condition: state
-        entity_id: binary_sensor.night
+        entity_id: binary_sensor.iryna_asleep
         state: 'off'
-      - condition: time
-        after: 08:00:00
       sequence:
       - action: fan.turn_off
         target:
           entity_id: fan.irynas_bedroom_air_purifier
     - conditions:
       - condition: trigger
-        id: morning
+        id: awake
       sequence:
       - action: select.select_option
         data:
@@ -659,16 +691,43 @@
   mode: single
 - id: '1761645317783'
   alias: Notifications - Bed linen
-  description: ''
+  description: Утреннее напоминание каждому по его подъёму (датчик сна on -> off,
+    04:00-11:05). Страховка 11:00:30 - тем, кто дома, но этим утром не просыпался
+    по датчику (ночевал не дома). Раньше было по binary_sensor.morning.
   triggers:
   - trigger: state
-    entity_id:
-    - binary_sensor.morning
-    id: morning
-    to: 'on'
-  conditions: []
+    entity_id: binary_sensor.iryna_asleep
+    from: 'on'
+    to: 'off'
+    id: iryna
+  - trigger: state
+    entity_id: binary_sensor.semyon_asleep
+    from: 'on'
+    to: 'off'
+    id: semyon
+  - trigger: time
+    at: '11:00:30'
+    id: fallback
+  conditions:
+  - condition: time
+    after: 04:00:00
+    before: '11:05:00'
   actions:
   - if:
+    - condition: or
+      conditions:
+      - condition: trigger
+        id: iryna
+      - condition: and
+        conditions:
+        - condition: trigger
+          id: fallback
+        - condition: state
+          entity_id: person.iryna
+          state: home
+        - condition: template
+          value_template: '{{ states.binary_sensor.iryna_asleep.last_changed < today_at(''04:00'')
+            }}'
     - condition: or
       conditions:
       - condition: state
@@ -709,6 +768,20 @@
   - if:
     - condition: or
       conditions:
+      - condition: trigger
+        id: semyon
+      - condition: and
+        conditions:
+        - condition: trigger
+          id: fallback
+        - condition: state
+          entity_id: person.semyon
+          state: home
+        - condition: template
+          value_template: '{{ states.binary_sensor.semyon_asleep.last_changed < today_at(''04:00'')
+            }}'
+    - condition: or
+      conditions:
       - condition: state
         entity_id: binary_sensor.semyons_bed_sheets
         state: 'on'
@@ -744,7 +817,7 @@
           - наволочку для подушки
 
           {% endif %}'
-  mode: single
+  mode: queued
 - id: '1761750561648'
   alias: Switch - Entryway
   description: ''
@@ -1107,20 +1180,26 @@
   mode: single
 - id: '1765357730396'
   alias: Christmas
-  description: ''
+  description: 'Гирлянды: включает первый проснувшийся (residents_asleep on -> off
+    в утреннем окне) или восход +15 мин, выключает residents_asleep on (уснули все).
+    Пустой дом - выкл, кто-то пришёл - вкл. Раньше было по morning/night.'
   triggers:
   - trigger: sun
     event: sunrise
     offset: 00:15:00
     id: sunrise
   - trigger: state
-    entity_id: binary_sensor.morning
+    entity_id: binary_sensor.residents_asleep
+    from: 'on'
+    to: 'off'
     id: morning
-    to: 'on'
   - trigger: state
-    entity_id: binary_sensor.night
-    id: night
+    entity_id: binary_sensor.residents_asleep
     to: 'on'
+    not_from:
+    - unavailable
+    - unknown
+    id: night
   - trigger: state
     entity_id: zone.home
     id: residents
@@ -1132,10 +1211,19 @@
         id:
         - sunrise
         - morning
+      - or:
+        - condition: trigger
+          id: sunrise
+        - condition: state
+          entity_id: binary_sensor.wakeup_window
+          state: 'on'
       sequence:
       - condition: numeric_state
         entity_id: zone.home
         above: 0
+      - condition: state
+        entity_id: binary_sensor.residents_asleep
+        state: 'off'
       - action: light.turn_on
         metadata: {}
         target:

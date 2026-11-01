@@ -183,21 +183,48 @@ automation:
   # ---------------------------------------------------------------------------
   # Утренние напоминания
   # ---------------------------------------------------------------------------
+  # Каждому - по его подъёму (датчик сна on -> off, 04:00-11:05).
+  # Страховка 11:00:30 - тем, кто дома, но этим утром не просыпался по датчику (ночевал не дома).
+  # Раньше было по binary_sensor.morning (08:00).
   - id: notifications_towels
     alias: Notifications - Towels
     description: ""
-    mode: single
+    mode: queued
     triggers:
       - trigger: state
-        entity_id:
-          - binary_sensor.morning
-        id: morning
-        to: "on"
+        entity_id: binary_sensor.iryna_asleep
+        from: "on"
+        to: "off"
+        id: iryna
+      - trigger: state
+        entity_id: binary_sensor.semyon_asleep
+        from: "on"
+        to: "off"
+        id: semyon
+      - trigger: time
+        at: "11:00:30"
+        id: fallback
 
-    conditions: []
+    conditions:
+      - condition: time
+        after: "04:00:00"
+        before: "11:05:00"
 
     actions:
       - if:
+          - condition: or
+            conditions:
+              - condition: trigger
+                id: iryna
+              - condition: and
+                conditions:
+                  - condition: trigger
+                    id: fallback
+                  - condition: state
+                    entity_id: person.iryna
+                    state: home
+                  - condition: template
+                    value_template: "{{ states.binary_sensor.iryna_asleep.last_changed < today_at('04:00') }}"
           - condition: or
             conditions:
               - condition: state
@@ -234,6 +261,19 @@ automation:
                 {% endif %}
 
       - if:
+          - condition: or
+            conditions:
+              - condition: trigger
+                id: semyon
+              - condition: and
+                conditions:
+                  - condition: trigger
+                    id: fallback
+                  - condition: state
+                    entity_id: person.semyon
+                    state: home
+                  - condition: template
+                    value_template: "{{ states.binary_sensor.semyon_asleep.last_changed < today_at('04:00') }}"
           - condition: or
             conditions:
               - condition: state

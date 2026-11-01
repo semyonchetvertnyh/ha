@@ -23,135 +23,127 @@ notify:
         boolean:
       required: true
   sequence:
-    - action: ai_task.generate_data
-      data:
-        entity_id: ai_task.google_ai
-        task_name: Generate a notification text
-        instructions: >
-          Ты — J.A.R.V.I.S., цифровой дворецкий и ИИ Тони Старка: вежливый,
-          саркастичный, эффективный. Лёгкий юмор допустим, но всегда с достоинством.
-          Обращайся к **Семёну** всегда на русском и иногда как «сэр». Просто «сэр», **не** «сэр Семён».
-          Обращайся к **Ирине** как «мисс» и всегда на украинском. Просто «мисс», **не** «мисс Ирина».
+  - action: ai_task.generate_data
+    data:
+      entity_id: ai_task.google_ai
+      task_name: Generate a notification text
+      instructions: 'Ты — J.A.R.V.I.S., цифровой дворецкий и ИИ Тони Старка: вежливый,
+        саркастичный, эффективный. Лёгкий юмор допустим, но всегда с достоинством.
+        Обращайся к **Семёну** всегда на русском и иногда как «сэр». Просто «сэр»,
+        **не** «сэр Семён». Обращайся к **Ирине** как «мисс» и всегда на украинском.
+        Просто «мисс», **не** «мисс Ирина».
 
-          Придумай оригинальное уведомление в своем стиле, но очень короткое.
-          Используй "ё", а не "е", где нужно.
+        Придумай оригинальное уведомление в своем стиле, но очень короткое. Используй
+        "ё", а не "е", где нужно.
 
-          {{ description }}
-        structure:
-          category_ru:
-            description: >
-              Категория на русском языке с эмоджи в начале. Варианты:
-                - Высокая влажность
-                - Зарядка
-                - Постельное белье
-                - Кофе
-                - Посудомойка
-                - Сушилка
-                - Интернет
-                - Утюг
-                - Вода
-                - Духовка
-                - Медиа
-                - Плита
-                - Уборка
-                - Стирка
-                - Горячая вода
-                - Погода
-                - Метеоаларм
-              Если прямо ничего не подходит, придумай свою категорию.
-            required: true
-            selector:
-              text:
-          category_ua:
-            description: Такая же категория, но на украинском языке.
-            required: true
-            selector:
-              text:
-          message_for_semyon:
-            description: Короткий текст уведомления на русском языке, обращенный к Семёну.
-            required: true
-            selector:
-              text:
-          message_for_iryna:
-            description: Такой же текст уведомления, но на украинском языке и обращенный к Ирине.
-            required: true
-            selector:
-              text:
-          message_for_both:
-            description: >
-              Тот же самый текст уведомления на русском языке, но без обращения к Семёну или Ирине напрямую.
-              Будет использоваться для озвучивания голосом.
-            required: true
-            selector:
-              text:
-      response_variable: notification
-    - parallel:
-      - if:
-        - condition: template
-          value_template: "{{ 'person.semyon' in persons }}"
-        then:
-          - action: notify.persistent_notification
-            data:
-              title: "{{ notification.data.category_ru }}"
-              message: "{{ notification.data.message_for_semyon }}"
-          - action: notify.semyons_devices
-            data:
-              title: "{{ notification.data.category_ru }}"
-              message: "{{ notification.data.message_for_semyon }}"
-      - if:
-          - condition: template
-            value_template: "{{ 'person.iryna' in persons }}"
-        then:
-          - action: notify.irynas_devices
-            data:
-              title: "{{ notification.data.category_ua }}"
-              message: "{{ notification.data.message_for_iryna }}"
-      - if:
-          - condition: template
-            value_template: "{{ announce }}"
-          - condition: state
-            entity_id: binary_sensor.night
-            state: "off"
-        then:
-          - action: assist_satellite.announce
-            target:
-              entity_id:
-                - assist_satellite.living_room_speakers
-                - assist_satellite.semyons_bedroom_speakers
-            data:
-              message: "{{ notification.data.message_for_both }}"
-              preannounce: true
-          # - action: tts.speak
-          #   target:
-          #     entity_id: tts.elevenlabs
-          #   data:
-          #     media_player_entity_id:
-          #       - media_player.living_room_homepod
-          #       - media_player.living_room_speakers
-          #       - media_player.semyons_bedroom_speakers
-          #     message: "{{ notification.data.message_for_both }}"
-          #     cache: true
-          # - choose:
-          #     - conditions:
-          #         - condition: state
-          #           entity_id: person.semyon
-          #           state: home
-          #         - alias: If Iryna is not Home
-          #           condition: not
-          #           conditions:
-          #             - condition: state
-          #               entity_id: person.iryna
-          #               state: home
-          #       sequence: []
-          #     - conditions:
-          #         - condition: state
-          #           entity_id: person.iryna
-          #           state: home
-          #         - alias: If Semyon is not Home
-          #           condition: not
-          #           conditions:
-          #             - condition: state
-          #               entity_id: person.semyon
-          #               state: home
-          #       sequence: []
-          #   default: []
+        {{ description }}
+
+        '
+      structure:
+        category_ru:
+          description: "Категория на русском языке с эмоджи в начале. Варианты:\n
+            \ - Высокая влажность\n  - Зарядка\n  - Постельное белье\n  - Кофе\n  -
+            Посудомойка\n  - Сушилка\n  - Интернет\n  - Утюг\n  - Вода\n  - Духовка\n
+            \ - Медиа\n  - Плита\n  - Уборка\n  - Стирка\n  - Горячая вода\n  - Погода\n
+            \ - Метеоаларм\nЕсли прямо ничего не подходит, придумай свою категорию.\n"
+          required: true
+          selector:
+            text:
+        category_ua:
+          description: Такая же категория, но на украинском языке.
+          required: true
+          selector:
+            text:
+        message_for_semyon:
+          description: Короткий текст уведомления на русском языке, обращенный к Семёну.
+          required: true
+          selector:
+            text:
+        message_for_iryna:
+          description: Такой же текст уведомления, но на украинском языке и обращенный
+            к Ирине.
+          required: true
+          selector:
+            text:
+        message_for_both:
+          description: 'Тот же самый текст уведомления на русском языке, но без обращения
+            к Семёну или Ирине напрямую. Будет использоваться для озвучивания голосом.
+
+            '
+          required: true
+          selector:
+            text:
+    response_variable: notification
+  - parallel:
+    - if:
+      - condition: template
+        value_template: '{{ ''person.semyon'' in persons }}'
+      then:
+      - action: notify.persistent_notification
+        data:
+          title: '{{ notification.data.category_ru }}'
+          message: '{{ notification.data.message_for_semyon }}'
+      - action: notify.semyons_devices
+        data:
+          title: '{{ notification.data.category_ru }}'
+          message: '{{ notification.data.message_for_semyon }}'
+    - if:
+      - condition: template
+        value_template: '{{ ''person.iryna'' in persons }}'
+      then:
+      - action: notify.irynas_devices
+        data:
+          title: '{{ notification.data.category_ua }}'
+          message: '{{ notification.data.message_for_iryna }}'
+    - if:
+      - condition: template
+        value_template: '{{ announce }}'
+      - condition: state
+        entity_id: binary_sensor.semyon_asleep
+        state: 'off'
+      - condition: state
+        entity_id: binary_sensor.iryna_asleep
+        state: 'off'
+      then:
+      - action: assist_satellite.announce
+        target:
+          entity_id:
+          - assist_satellite.living_room_speakers
+          - assist_satellite.semyons_bedroom_speakers
+        data:
+          message: '{{ notification.data.message_for_both }}'
+          preannounce: true
+      # - action: tts.speak
+      #   target:
+      #     entity_id: tts.elevenlabs
+      #   data:
+      #     media_player_entity_id:
+      #       - media_player.living_room_homepod
+      #       - media_player.living_room_speakers
+      #       - media_player.semyons_bedroom_speakers
+      #     message: "{{ notification.data.message_for_both }}"
+      #     cache: true
+      # - choose:
+      #     - conditions:
+      #         - condition: state
+      #           entity_id: person.semyon
+      #           state: home
+      #         - alias: If Iryna is not Home
+      #           condition: not
+      #           conditions:
+      #             - condition: state
+      #               entity_id: person.iryna
+      #               state: home
+      #       sequence: []
+      #     - conditions:
+      #         - condition: state
+      #           entity_id: person.iryna
+      #           state: home
+      #         - alias: If Semyon is not Home
+      #           condition: not
+      #           conditions:
+      #             - condition: state
+      #               entity_id: person.semyon
+      #               state: home
+      #       sequence: []
+      #   default: []
