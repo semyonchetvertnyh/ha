@@ -326,11 +326,10 @@
   description: ''
   triggers:
   - trigger: state
-    entity_id:
-    - binary_sensor.morning
-    to: 'on'
+    entity_id: binary_sensor.residents_asleep
+    from: 'on'
+    to: 'off'
     id: morning
-    enabled: false
   - id: dusk
     trigger: time
     at: sensor.sun_next_dusk
@@ -385,6 +384,9 @@
       - condition: trigger
         id:
         - morning
+      - condition: state
+        entity_id: binary_sensor.wakeup_window
+        state: 'on'
       sequence:
       - action: cover.open_cover
         target:
