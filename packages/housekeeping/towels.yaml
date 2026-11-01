@@ -7,12 +7,10 @@
 #   input_button  — кнопка «сменил», обнуляет счётчик
 #   binary_sensor — device_class: problem, включается при превышении срока
 #   automation    — инкремент счётчиков + сброс по кнопке
-#   automation    — утреннее напоминание через script.notify
+#   (утреннее напоминание Notifications - Towels удалено 01.11)
 #
-# Срок замены: 4 дней для банных полотенец и 3 дня для полотенца для рук.
-# Чтобы изменить срок — правьте числа в двух местах для каждого полотенца:
-#   1) state: в template -> binary_sensor
-#   2) переменная *_overdue_* в автоматизации уведомлений
+# Срок замены: 7 дней для банных полотенец и 3 дня для полотенца для рук
+# (state: в template -> binary_sensor).
 # =============================================================================
 
 input_number:
@@ -180,131 +178,3 @@ automation:
                 data:
                   value: 0
 
-  # ---------------------------------------------------------------------------
-  # Утренние напоминания
-  # ---------------------------------------------------------------------------
-  # Каждому - по его подъёму (датчик сна on -> off, 04:00-11:05).
-  # Страховка 11:00:30 - тем, кто дома, но этим утром не просыпался по датчику (ночевал не дома).
-  # Раньше было по binary_sensor.morning (08:00).
-  - id: notifications_towels
-    alias: Notifications - Towels
-    description: ""
-    mode: queued
-    triggers:
-      - trigger: state
-        entity_id: binary_sensor.iryna_asleep
-        from: "on"
-        to: "off"
-        id: iryna
-      - trigger: state
-        entity_id: binary_sensor.semyon_asleep
-        from: "on"
-        to: "off"
-        id: semyon
-      - trigger: time
-        at: "11:00:30"
-        id: fallback
-
-    conditions:
-      - condition: time
-        after: "04:00:00"
-        before: "11:05:00"
-
-    actions:
-      - if:
-          - condition: or
-            conditions:
-              - condition: trigger
-                id: iryna
-              - condition: and
-                conditions:
-                  - condition: trigger
-                    id: fallback
-                  - condition: state
-                    entity_id: person.iryna
-                    state: home
-                  - condition: template
-                    value_template: "{{ states.binary_sensor.iryna_asleep.last_changed < today_at('04:00') }}"
-          - condition: or
-            conditions:
-              - condition: state
-                entity_id: binary_sensor.irynas_bath_towel
-                state: "on"
-              - condition: state
-                entity_id: binary_sensor.hand_towel
-                state: "on"
-        then:
-          - variables:
-              irynas_overdue_bath_towel: "{{ states('input_number.irynas_bath_towel') | int - 7 }}"
-              irynas_overdue_hand_towel: "{{ states('input_number.hand_towel') | int - 3 }}"
-          - action: script.notify
-            data:
-              announce: false
-              persons:
-                - person.iryna
-              description: >-
-                Это {{ [irynas_overdue_bath_towel, irynas_overdue_hand_towel] | max }}-е напоминание.
-
-
-                Использовалось дольше положенного, поэтому Ирине нужно заменить:
-
-                {% if states('binary_sensor.irynas_bath_towel') == 'on' %}
-
-                - банное полотенце
-
-                {% endif %}
-
-                {% if states('binary_sensor.hand_towel') == 'on' %}
-
-                - полотенце для рук
-
-                {% endif %}
-
-      - if:
-          - condition: or
-            conditions:
-              - condition: trigger
-                id: semyon
-              - condition: and
-                conditions:
-                  - condition: trigger
-                    id: fallback
-                  - condition: state
-                    entity_id: person.semyon
-                    state: home
-                  - condition: template
-                    value_template: "{{ states.binary_sensor.semyon_asleep.last_changed < today_at('04:00') }}"
-          - condition: or
-            conditions:
-              - condition: state
-                entity_id: binary_sensor.semyons_bath_towel
-                state: "on"
-              - condition: state
-                entity_id: binary_sensor.hand_towel
-                state: "on"
-        then:
-          - variables:
-              semyons_overdue_bath_towel: "{{ states('input_number.semyons_bath_towel') | int - 7 }}"
-              semyons_overdue_hand_towel: "{{ states('input_number.hand_towel') | int - 3 }}"
-          - action: script.notify
-            data:
-              announce: false
-              persons:
-                - person.semyon
-              description: >-
-                Это {{ [semyons_overdue_bath_towel, semyons_overdue_hand_towel] | max }}-е напоминание.
-
-
-                Использовалось дольше положенного, поэтому Семену нужно заменить:
-
-                {% if states('binary_sensor.semyons_bath_towel') == 'on' %}
-
-                - банное полотенце
-
-                {% endif %}
-
-                {% if states('binary_sensor.hand_towel') == 'on' %}
-
-                - полотенце для рук
-
-                {% endif %}
