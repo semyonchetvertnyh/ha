@@ -182,13 +182,17 @@ automation:
     id: adaptive_lighting_sleep_mode
     mode: queued
     triggers:
+      # not_from: перезагрузка шаблонов даёт on -> unavailable -> off -> on за доли секунды
+      #   (30.10 23:15, 31.10 07:27), и Sleep Mode мигал выкл/вкл.
       - trigger: state
         entity_id: binary_sensor.residents_asleep
         to: ["on", "off"]
+        not_from: ["unavailable", "unknown"]
         id: residents
       - trigger: state
         entity_id: binary_sensor.iryna_asleep
         to: ["on", "off"]
+        not_from: ["unavailable", "unknown"]
         id: iryna
     actions:
       - choose:

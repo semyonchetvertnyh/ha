@@ -1655,20 +1655,33 @@
   mode: single
 - id: '1783934989428'
   alias: Semyons Bedroom AC LED
-  description: ''
+  description: 'Гасит LED кондиционера, пока Семён спит: когда он уснул (semyon_asleep)
+    или когда кондиционер включили, пока он спит. Раньше было по binary_sensor.night.'
   triggers:
-  - trigger: state
-    entity_id:
-    - binary_sensor.night
-    to:
-    - 'on'
+  - entity_id: binary_sensor.semyon_asleep
+    id: asleep
+    not_from:
+    - unavailable
+    - unknown
+    to: 'on'
+    trigger: state
+  - entity_id: climate.semyons_bedroom_ac
+    from: 'off'
+    id: ac_on
+    not_to:
+    - unavailable
+    - unknown
+    trigger: state
   conditions:
+  - condition: state
+    entity_id: binary_sensor.semyon_asleep
+    state: 'on'
   - condition: climate.is_on
-    target:
-      entity_id: climate.semyons_bedroom_ac
     options:
       behavior: any
       for: 00:00:00
+    target:
+      entity_id: climate.semyons_bedroom_ac
   actions:
   - action: switch.turn_off
     target:
