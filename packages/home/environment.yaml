@@ -5,9 +5,6 @@ template:
         state: >
           {% set exclusions = [
             'light.touchkio_wallpanel_display',
-            'light.internet_entryway_extender_status_light',
-            'light.internet_living_room_router_status_light',
-            'light.internet_irynas_bedroom_router_status_light',
           ] + integration_entities('unifi') %}
           {{ states.light
             | rejectattr('entity_id', 'in', exclusions)
@@ -26,9 +23,6 @@ template:
           on: >
             {% set exclusions = [
               'light.touchkio_wallpanel_display',
-              'light.internet_entryway_extender_status_light',
-              'light.internet_living_room_router_status_light',
-              'light.internet_irynas_bedroom_router_status_light',
             ] + integration_entities('unifi') %}
             {{ states.light
               | rejectattr('entity_id', 'in', exclusions)
