@@ -909,13 +909,11 @@
   alias: Knob - Semyon’s Bedroom
   description: ''
   use_blueprint:
-    path: semyonchetvertnyh/light_aqara_knob.yaml
     input:
-      knob_action_event: event.semyons_bedroom_knob_action
-      knob_action_rotation_angle_speed: sensor.semyons_bedroom_knob_action_rotation_angle_speed
-      knob_action_rotation_button_state: sensor.semyons_bedroom_knob_action_rotation_button_state
+      knob_topic: zigbee2mqtt/Semyon’s Bedroom Knob
       target_light:
         entity_id: light.semyons_bedroom
+    path: semyonchetvertnyh/light_aqara_knob.yaml
 - id: '1764312603111'
   alias: Notifications - Coffeemaker
   description: ''
@@ -1386,15 +1384,14 @@
   alias: Knob - Iryna’s Bedroom
   description: ''
   use_blueprint:
-    path: semyonchetvertnyh/light_aqara_knob.yaml
     input:
-      knob_action_event: event.irynas_bedroom_knob_action
-      knob_action_rotation_angle_speed: sensor.irynas_bedroom_knob_action_rotation_angle_speed
-      knob_action_rotation_button_state: sensor.irynas_bedroom_knob_action_rotation_button_state
+      knob_topic: zigbee2mqtt/Iryna’s Bedroom Knob
       target_light:
         entity_id:
-        - light.irynas_bedroom
+        - light.irynas_bedroom_ceiling
+        - light.irynas_bedroom_speakers_glow
         - light.irynas_bedside_lamp
+    path: semyonchetvertnyh/light_aqara_knob.yaml
 - id: '1770116859281'
   alias: Notifications - Iron
   description: ''

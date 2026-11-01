@@ -1,17 +1,14 @@
 blueprint:
   name: Aqara Knob - Light control
-  description: >
-    Blueprint for controlling a dimmable light with an Aqara Knob.
-
-
-    The flow:
-      - Single press - toggles the light on and off 
-      - Double press - sets maximum brightness and a cool color 
-      - Hold - sets low brightness and a warm color 
-      - Rotation - adjusts brightness up and down 
-      - Press & rotate - adjusts color temperature up and down 
+  description: "Blueprint for controlling dimmable lights with an Aqara Knob (Zigbee2MQTT).\n\nThe
+    flow:\n  - Single press - if any light is on, turn all off; otherwise turn all
+    on\n  - Double press - maximum brightness and a cool color\n  - Hold - low brightness
+    and a warm color\n  - Rotation - adjusts brightness up and down\n  - Press & rotate
+    - adjusts color temperature up and down\n\n\nTriggers on the knob's Zigbee2MQTT
+    device topic, so action, rotation speed and button state come from one message
+    (no race between entities). Target individual lights (not a Hue room) if Adaptive
+    Lighting manages them.\n"
   domain: automation
-
   input:
     target_light:
       name: Target light(s)
@@ -19,131 +16,90 @@ blueprint:
       selector:
         target:
           entity:
-            - domain: light
-
-    knob_action_event:
-      name: Knob - Action
-      description: Entity that provides knob actions (event-based entity).
+          - domain:
+            - light
+    knob_topic:
+      name: Knob - Zigbee2MQTT topic
+      description: Device topic of the knob, e.g. zigbee2mqtt/Iryna’s Bedroom Knob
       selector:
-        entity:
-          filter:
-            - domain: event
-              integration: mqtt
+        text:
+          multiline: false
           multiple: false
-
-    knob_action_rotation_angle_speed:
-      name: Knob - Action rotation angle speed
-      description: Sensor providing rotation angle/speed (usually ..._action_rotation_angle_speed).
-      selector:
-        entity:
-          filter:
-            - domain: sensor
-              integration: mqtt
-          multiple: false
-
-    knob_action_rotation_button_state:
-      name: Knob - Action rotation button state
-      description: Entity that indicates button state during rotation (pressed / not pressed).
-      selector:
-        entity:
-          filter:
-            - domain: sensor
-              integration: mqtt
-          multiple: false
-
-mode: single
-
+mode: parallel
+max: 6
+max_exceeded: silent
+triggers:
+- trigger: mqtt
+  topic: !input knob_topic
 variables:
   light_target: !input target_light
-  light_entity: >
-    {% set entities = light_target.entity_id
-       if light_target.entity_id is defined
-       else [] %}
-    {{ entities[0] if entities | count > 0 else none }}
-  knob_action_rotation_angle_speed_entity: !input knob_action_rotation_angle_speed
-  knob_action_rotation_button_state_entity: !input knob_action_rotation_button_state
+  light_entities: '{% set e = light_target.entity_id | default([]) %} {{ [e] if e
+    is string else e | list }}
 
-triggers:
-  - trigger: state
-    entity_id: !input knob_action_event
-    not_from: unavailable
-
+    '
+  light_entity: '{{ light_entities | first | default(none) }}'
+  knob_action: '{{ trigger.payload_json.action | default('''') }}'
+  rotation_speed: '{{ trigger.payload_json.action_rotation_angle_speed | default(0)
+    | float(0) }}'
+  button_pressed: '{{ trigger.payload_json.action_rotation_button_state | default('''')
+    == ''pressed'' }}'
+conditions:
+- '{{ knob_action in [''single'', ''double'', ''hold'', ''rotation''] }}'
 actions:
-  - choose:
-      - alias: If single pressed, toggle the light
-        conditions:
-          - condition: template
-            value_template: "{{ trigger.to_state.attributes.event_type == 'single' }}"
-        sequence:
-          - action: light.toggle
-            target: !input target_light
-            data:
-              transition: 2
-
-      - alias: If double pressed, set maximum brightness and a cool color
-        conditions:
-          - condition: template
-            value_template: "{{ trigger.to_state.attributes.event_type == 'double' }}"
-        sequence:
-          - action: light.turn_on
-            target: !input target_light
-            data:
-              color_temp_kelvin: "{{ state_attr(light_entity, 'max_color_temp_kelvin') }}"
-              brightness_pct: 100
-              transition: 1
-      
-      - alias: If held, set low brightness and a warm color
-        conditions:
-          - condition: template
-            value_template: "{{ trigger.to_state.attributes.event_type == 'hold' }}"
-        sequence:
-          - action: light.turn_on
-            target: !input target_light
-            data:
-              color_temp_kelvin: "{{ state_attr(light_entity, 'min_color_temp_kelvin') }}"
-              brightness_pct: 1
-              transition: 1
-      
-      - alias: If rotated, adjust brightness up or down
-        conditions:
-          - condition: template
-            value_template: >
-              {{ trigger.to_state.attributes.event_type == 'rotation' and
-                 is_state(knob_action_rotation_button_state_entity, 'released') }}
-        sequence:
-          - variables:
-              brightness_step: "{{ (states(knob_action_rotation_angle_speed_entity) | float(0) * 0.3) | round(0) }}"
-          - action: light.turn_on
-            target: !input target_light
-            data:
-              brightness_step: "{{ brightness_step }}"
-              transition: 0.25
-
-      - alias: If pressed and rotated, adjust color temperature up or down
-        conditions:
-          - condition: template
-            value_template: >
-              {{ trigger.to_state.attributes.event_type == 'rotation' and
-                 is_state(knob_action_rotation_button_state_entity, 'pressed') }}
-        sequence:
-          - variables:
-              current_color_kelvin: "{{ state_attr(light_entity, 'color_temp_kelvin') | float(2700) }}"
-              # уменьшаем чувствительность (делим скорость, чтобы шаг был плавнее)
-              color_kelvin_delta: "{{ (states(knob_action_rotation_angle_speed_entity) | float(0) * -5) | round(0) }}"
-              # ограничиваем диапазон (например 2000–6500K)
-              target_color_kelvin: "{{ ([2000, current_color_kelvin + color_kelvin_delta, 6500] | sort)[1] | round(0) }}"
-          - action: light.turn_on
-            target: !input target_light
-            data:
-              color_temp_kelvin: "{{ target_color_kelvin }}"
-              transition: 0.4
-
-          # - variables:
-          #     current_color_temp: "{{ state_attr(light_entity, 'color_temp') | float(0) }}"
-          #     color_temp_delta: "{{ (states(knob_action_rotation_angle_speed_entity) | float(0) * -1) | round(0) }}"
-          #     target_color_temp: "{{ ([153, current_color_temp + color_temp_delta, 500] | sort)[1] | round(0) }}"
-          # - action: light.turn_on
-          #   target: !input target_light
-          #   data:
-          #     color_temp: "{{ target_color_temp }}"
-          #     transition: 0.25
+- choose:
+  - alias: Single press - all off if any is on, otherwise all on
+    conditions: '{{ knob_action == ''single'' }}'
+    sequence:
+    - if: '{{ light_entities | select(''is_state'', ''on'') | list | count > 0 }}'
+      then:
+      - action: light.turn_off
+        target: !input target_light
+        data:
+          transition: 1
+      else:
+      - action: light.turn_on
+        target: !input target_light
+        data:
+          transition: 1
+  - alias: Double press - maximum brightness, cool color
+    conditions: '{{ knob_action == ''double'' }}'
+    sequence:
+    - action: light.turn_on
+      target: !input target_light
+      data:
+        color_temp_kelvin: '{{ state_attr(light_entity, ''max_color_temp_kelvin'')
+          | int(6500) }}'
+        brightness_pct: 100
+        transition: 1
+  - alias: Hold - low brightness, warm color
+    conditions: '{{ knob_action == ''hold'' }}'
+    sequence:
+    - action: light.turn_on
+      target: !input target_light
+      data:
+        color_temp_kelvin: '{{ state_attr(light_entity, ''min_color_temp_kelvin'')
+          | int(2200) }}'
+        brightness_pct: 1
+        transition: 1
+  - alias: Rotation - brightness
+    conditions: '{{ knob_action == ''rotation'' and not button_pressed }}'
+    sequence:
+    - action: light.turn_on
+      target: !input target_light
+      data:
+        brightness_step: '{{ (rotation_speed * 0.3) | round(0) | int }}'
+        transition: 0.25
+  - alias: Press & rotate - color temperature
+    conditions: '{{ knob_action == ''rotation'' and button_pressed }}'
+    sequence:
+    - variables:
+        current_kelvin: '{{ state_attr(light_entity, ''color_temp_kelvin'') | float(2700)
+          }}'
+        kelvin_delta: '{{ (rotation_speed * -5) | round(0) }}'
+        target_kelvin: '{{ ([2000, current_kelvin + kelvin_delta, 6500] | sort)[1]
+          | int }}'
+    - action: light.turn_on
+      target: !input target_light
+      data:
+        color_temp_kelvin: '{{ target_kelvin }}'
+        transition: 0.4
