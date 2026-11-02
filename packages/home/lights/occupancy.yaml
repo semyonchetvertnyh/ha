@@ -21,4 +21,4 @@ binary_sensor:
     device_class: occupancy
     entities:
       - binary_sensor.bathroom_sink_occupancy
-      - binary_sensor.shower_occupancy
+      - binary_sensor.bathroom_shower_occupancy

@@ -76,7 +76,7 @@ sensor:
     type: mean
     entity_ids:
       - sensor.bathroom_sink_illuminance
-      - sensor.shower_illuminance
+      - sensor.bathroom_shower_illuminance
     round_digits: 0
 
 homeassistant:
