@@ -33,11 +33,12 @@ template:
         unique_id: living_room_bright
         device_class: light
         state: >
+          {# Гостиная: датчик стоит ближе к окну, чем зона дивана/стола, - пороги выше (02.11.2026) #}
           {% set lux = states('sensor.living_room_illuminance') | float(0) %}
           {% if this.state == 'on' %}
-            {{ lux > 20 }}
+            {{ lux > 100 }}
           {% else %}
-            {{ lux > 50 }}
+            {{ lux > 150 }}
           {% endif %}
         delay_on: "00:02:00"
         delay_off: "00:05:00"
