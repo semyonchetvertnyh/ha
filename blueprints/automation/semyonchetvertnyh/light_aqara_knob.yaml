@@ -54,13 +54,9 @@ actions:
       then:
       - action: light.turn_off
         target: !input target_light
-        data:
-          transition: 1
       else:
       - action: light.turn_on
         target: !input target_light
-        data:
-          transition: 1
   - alias: Double press - maximum brightness, cool color
     conditions: '{{ knob_action == ''double'' }}'
     sequence:
