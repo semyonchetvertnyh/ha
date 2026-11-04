@@ -25,6 +25,14 @@ automation:
         to: null # Any state (ignoring attribute changes)
         id: physical_changed
 
+      # Полу-заперт: Tedee в unknown + semi_locked on. Мимолетный semi_locked
+      # при переходах (~0.4 с) отсекаем задержкой
+      - trigger: state
+        entity_id: binary_sensor.entryway_lock_semi_locked
+        to: "on"
+        for: "00:00:02"
+        id: semi_locked
+
       # ридер вернулся онлайн (перезагрузка, переподключение, старт HA - LWT retained)
       - trigger: mqtt
         topic: entryway_lock_homekey/status
@@ -43,7 +51,10 @@ automation:
         id: homekey_tap
 
     variables:
-      physical: "{{ states('lock.entryway') | lower }}"
+      # unknown + semi_locked = полу-заперт, считаем отдельным стабильным состоянием
+      physical: >-
+        {% set s = states('lock.entryway') | lower %}
+        {{ 'semi_locked' if s == 'unknown' and is_state('binary_sensor.entryway_lock_semi_locked', 'on') else s }}
       # Tedee менялся меньше 3 сек назад - значит пришло эхо нашей же синхронизации,
       # тап, который уже обрабатывается, или старт HA с retained-сообщением
       physical_settled: >-
@@ -71,10 +82,14 @@ automation:
           # стабильные состояния - одним set_state (current + target сразу, без мигания),
           # переходные - только target, недоступность - только current
           - alias: Physical lock changed / reader online -> sync HomeKey
-            conditions: "{{ trigger.id in ['physical_changed', 'reader_online'] }}"
+            # semi_locked по physical_changed не шлем - ждем триггер semi_locked (2 с)
+            conditions: >-
+              {{ trigger.id in ['physical_changed', 'semi_locked', 'reader_online']
+                 and not (trigger.id == 'physical_changed' and physical == 'semi_locked') }}
             sequence:
               - choose:
-                  - conditions: "{{ physical in ['unlocked', 'open', 'locked'] }}"
+                  # полу-заперт для HomeKit = не заперт (Unsecured)
+                  - conditions: "{{ physical in ['unlocked', 'open', 'semi_locked', 'locked'] }}"
                     sequence:
                       - action: mqtt.publish
                         data:
@@ -125,7 +140,7 @@ automation:
           - alias: HomeKey tap while unlocked -> open
             conditions: >-
               {{ trigger.id == 'homekey_tap'
-                 and physical in ['unlocked', 'open']
+                 and physical in ['unlocked', 'open', 'semi_locked']
                  and physical_settled }}
             sequence:
               - action: lock.open
@@ -139,17 +154,17 @@ automation:
             conditions: >-
               {{ trigger.id == 'homekey_command'
                  and trigger.payload in ['0', '1']
-                 and physical in ['locked', 'unlocked', 'open']
+                 and physical in ['locked', 'unlocked', 'open', 'semi_locked']
                  and physical_settled }}
             sequence:
               - choose:
-                  - conditions: "{{ trigger.payload == '0' and physical == 'locked' }}"
+                  - conditions: "{{ trigger.payload == '0' and physical in ['locked', 'semi_locked'] }}"
                     sequence:
                       - action: lock.open
                         target:
                           entity_id: lock.entryway
 
-                  - conditions: "{{ trigger.payload == '1' and physical in ['unlocked', 'open'] }}"
+                  - conditions: "{{ trigger.payload == '1' and physical in ['unlocked', 'open', 'semi_locked'] }}"
                     sequence:
                       - action: lock.lock
                         target:
