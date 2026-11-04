@@ -8,7 +8,7 @@ template:
       # Внутри квартиры полминуты никто не двигался → дверь открывают снаружи.
       # Это и отличает вход от выхода.
       - condition: state
-        entity_id: binary_sensor.kitchen_camera_motion
+        entity_id: binary_sensor.kitchen_camera_motion_sensor
         state: "off"
         for: "00:00:30"
     binary_sensor:

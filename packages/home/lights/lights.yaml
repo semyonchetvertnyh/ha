@@ -151,16 +151,67 @@ automation:
 
   - alias: Lights - Entryway
     id: lights_entryway
-    use_blueprint:
-      path: semyonchetvertnyh/lights_motion.yaml
-      input:
-        motion_entity: binary_sensor.entryway_presence
-        light_target:
-          entity_id: light.entryway
-        no_motion_wait: 0
-        block_entities:
-          - binary_sensor.outdoor_bright
-          - binary_sensor.residents_asleep
+    description: >
+      При входе в квартиру зажигает свет на кухне и передаёт его
+      Lights - Kitchen (состояние auto). Гасит сам, только если на кухню
+      так никто и не зашёл.
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.entryway_presence
+        from: "off"
+        to: "on"
+    conditions:
+      - condition: state
+        entity_id: input_select.kitchen_lights
+        state: idle
+      - condition: state
+        entity_id: binary_sensor.lights_allowed
+        state: "on"
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: binary_sensor.kitchen_bright
+            state: "on"
+          - condition: state
+            entity_id: binary_sensor.residents_asleep
+            state: "on"
+    actions:
+      - action: light.turn_on
+        target:
+          entity_id:
+            - light.kitchen_dining_table
+            - light.kitchen_countertop
+        data:
+          transition: 3
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.kitchen_lights
+        data:
+          option: auto
+      - wait_for_trigger:
+          - trigger: state
+            entity_id: binary_sensor.entryway_presence
+            to: "off"
+      - condition: state
+        entity_id: binary_sensor.kitchen_occupancy
+        state: "off"
+      - condition: state
+        entity_id: input_select.kitchen_lights
+        state: auto
+      # Сначала idle, потом turn_off - иначе Lights - Kitchen примет это за ручное выключение
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.kitchen_lights
+        data:
+          option: idle
+      - action: light.turn_off
+        target:
+          entity_id:
+            - light.kitchen_dining_table
+            - light.kitchen_countertop
+        data:
+          transition: 3
 
   - alias: Lights - Laundry
     id: lights_laundry
