@@ -1,9 +1,3 @@
-timer:
-  entryway_lock:
-    name: Entryway Lock
-    icon: mdi:lock
-    restore: true
-
 automation:
   # Синк Tedee (lock.entryway) <-> HomeKey-ESP32 (v0.9) через MQTT.
   # На ридере должны быть включены: Always Unlock on HomeKey (тап никогда не запирает,

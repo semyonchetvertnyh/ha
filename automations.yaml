@@ -285,41 +285,36 @@
   mode: single
 - id: '1760453651233'
   alias: Entryway Lock
-  description: ''
+  description: Автозапирание - замок не заперт (unlocked или полу-заперт) и дверь
+    закрыта 1.5 минуты
   triggers:
-  - trigger: state
-    entity_id:
-    - lock.entryway
+  - entity_id: lock.entryway
+    for: 00:01:30
     to:
     - unlocked
     - unknown
-    for:
-      hours: 0
-      minutes: 1
-      seconds: 30
-  - event_type: timer.finished
-    event_data:
-      entity_id: timer.entryway_lock
-    trigger: event
-  conditions: []
+    trigger: state
+  - entity_id: binary_sensor.entryway_door
+    for: 00:01:30
+    to: 'off'
+    trigger: state
+  - minutes: /5
+    trigger: time_pattern
+  conditions:
+  - condition: state
+    entity_id: lock.entryway
+    for: 00:01:30
+    state:
+    - unlocked
+    - unknown
+  - condition: state
+    entity_id: binary_sensor.entryway_door
+    for: 00:01:30
+    state: 'off'
   actions:
-  - if:
-    - condition: state
-      entity_id: binary_sensor.entryway_door
-      state: 'off'
-    then:
-    - target:
-        entity_id: lock.entryway
-      action: lock.lock
-    - target:
-        entity_id: timer.entryway_lock
-      action: timer.cancel
-    else:
-    - target:
-        entity_id: timer.entryway_lock
-      action: timer.start
-      data:
-        duration: 00:01:30
+  - action: lock.lock
+    target:
+      entity_id: lock.entryway
   mode: single
 - id: '1760457882183'
   alias: Shades
