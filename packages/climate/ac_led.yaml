@@ -44,26 +44,18 @@ automation:
   - alias: "Semyon’s Bedroom AC LED: Sync"
     id: semyons_bedroom_ac_led_sync
     mode: restart
+    # Любой режим, кроме off, = кондиционер включён (и LED на нём загорается сам).
+    #   Раньше был список режимов, и heat_cool в него не попал: 04.11 в 5:43 LED не погас ночью.
     triggers:
       - trigger: state
         entity_id: climate.semyons_bedroom_ac
         from: "off"
-        to:
-          - auto
-          - cool
-          - dry
-          - fan_only
-          - heat
+        not_to: ["off", "unavailable", "unknown"]
         id: "on"
       - trigger: state
         entity_id: climate.semyons_bedroom_ac
-        from:
-          - auto
-          - cool
-          - dry
-          - fan_only
-          - heat
         to: "off"
+        not_from: ["off", "unavailable", "unknown"]
         id: "off"
     actions:
       - choose:

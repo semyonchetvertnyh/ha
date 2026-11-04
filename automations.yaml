@@ -1615,7 +1615,9 @@
 - id: '1783934989428'
   alias: Semyons Bedroom AC LED
   description: 'Гасит LED кондиционера, пока Семён спит: когда он уснул (semyon_asleep)
-    или когда кондиционер включили, пока он спит. Раньше было по binary_sensor.night.'
+    или когда кондиционер включили, пока он спит. Раньше было по binary_sensor.night.
+    Триггер включения ждёт 3 секунды, чтобы Sync успел отметить, что LED загорелся
+    (иначе гонка и команда не уходит).'
   triggers:
   - entity_id: binary_sensor.semyon_asleep
     id: asleep
@@ -1631,6 +1633,7 @@
     - unavailable
     - unknown
     trigger: state
+    for: 00:00:03
   conditions:
   - condition: state
     entity_id: binary_sensor.semyon_asleep
