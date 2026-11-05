@@ -2,10 +2,11 @@ timer:
   water_heater:
     name: Water Heater
     icon: mdi:water-boiler
-    duration: "01:30:00"
     restore: true
 
 input_number:
+  # Аварийный предел нагрева. Связан с HomeKit (linked_valve_duration),
+  # обычно нагрев заканчивается раньше - по термостату бойлера.
   water_heater_duration:
     name: Water Heater Duration
     min: 600
@@ -14,12 +15,10 @@ input_number:
     unit_of_measurement: s
     icon: mdi:water-boiler
 
-input_datetime:
-  water_heating_once_time:
-    name: Water Heating Once Time
-    icon: mdi:clock-time-five
-    has_date: false
-    has_time: true
+input_boolean:
+  water_heating_schedule:
+    name: Automatic Water Heating
+    icon: mdi:water-boiler-auto
 
 template:
   - sensor:
@@ -29,50 +28,281 @@ template:
         state: "{{ state_attr('timer.water_heater', 'finishes_at') }}"
         availability: "{{ is_state('timer.water_heater', 'active') }}"
 
+  - binary_sensor:
+      # ТЭН реально греет. Термостат бойлера отключает ТЭН циклами
+      # примерно по минуте, поэтому пауза дольше 20 секунд при
+      # включённом реле значит, что вода дошла до уставки.
+      - name: Water Heater Heating
+        unique_id: water_heater_heating
+        device_class: heat
+        icon: mdi:fire
+        state: "{{ states('sensor.water_heater_power') | float(0) > 100 }}"
+        availability: "{{ has_value('sensor.water_heater_power') }}"
+        delay_off:
+          seconds: 20
+
 automation:
-  - alias: Timer - Water Heater
-    id: timer_water_heater
-    use_blueprint:
-      path: semyonchetvertnyh/timer_sync_to_switch.yaml
-      input:
-        timer: timer.water_heater
-        switch: switch.water_heater
-        duration: input_number.water_heater_duration
-        turn_off_when_timer_finished: true
-
-  - alias: Water Heating - Once
-    id: water_heating_once
-    description: >
-      This automation is useful when you need to turn on water heater one
-      time at specific time (e.g. before a trip).
-    mode: single
-    trigger:
-      - trigger: time
-        at: input_datetime.water_heating_once_time
+  - alias: Water Heating
+    id: "1762005091052"
+    description: >-
+      Всё управление бойлером. Утром в пасмурную прохладную погоду включает
+      нагрев (если включён input_boolean.water_heating_schedule). Выключает
+      нагрев, когда термостат бойлера отключил ТЭН (вода горячая), или если
+      ТЭН не начал греть за 2 минуты (вода уже горячая). Таймер на
+      input_number.water_heater_duration (2 часа) - аварийный предел.
+    mode: queued
+    max: 10
+    triggers:
+      - trigger: sun
+        event: sunrise
+        offset: "00:15:00"
+        id: schedule
+      - trigger: state
+        entity_id: switch.water_heater
+        to: "on"
+        not_from:
+          - unknown
+          - unavailable
+        id: switch_on
+      - trigger: state
+        entity_id: switch.water_heater
+        to: "off"
+        not_from:
+          - unknown
+          - unavailable
+        id: switch_off
+      - trigger: state
+        entity_id: binary_sensor.water_heater_heating
+        from: "on"
+        to: "off"
+        id: thermostat_off
+      - trigger: state
+        entity_id: switch.water_heater
+        to: "on"
+        not_from:
+          - unknown
+          - unavailable
+        for:
+          minutes: 2
+        id: not_heating
+      - trigger: state
+        entity_id: input_number.water_heater_duration
+        not_from:
+          - unknown
+          - unavailable
+        not_to:
+          - unknown
+          - unavailable
+        id: duration_changed
+      - trigger: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.water_heater
+        id: timer_finished
+      - trigger: event
+        event_type: timer.cancelled
+        event_data:
+          entity_id: timer.water_heater
+        id: timer_cancelled
     actions:
-      - action: switch.turn_on
-        target:
-          entity_id: switch.water_heater
-      - action: automation.turn_off
-        target:
-          entity_id: automation.water_heating_once
-        data:
-          stop_actions: false
+      - choose:
+          - alias: Утренний нагрев в пасмурную прохладную погоду
+            conditions:
+              - condition: trigger
+                id: schedule
+              - condition: state
+                entity_id: input_boolean.water_heating_schedule
+                state: "on"
+              - condition: state
+                entity_id: weather.forecast_home
+                state:
+                  - cloudy
+                  - exceptional
+                  - fog
+                  - hail
+                  - lightning-rainy
+                  - lightning
+                  - partlycloudy
+                  - pouring
+                  - rainy
+                  - snowy-rainy
+                  - snowy
+                  - windy-variant
+                  - windy
+              - condition: numeric_state
+                entity_id: weather.forecast_home
+                attribute: temperature
+                below: 22
+            sequence:
+              - action: switch.turn_on
+                target:
+                  entity_id: switch.water_heater
 
-  - alias: Water Heating - Auto-off
-    id: water_heating_auto_off
+          - alias: Реле включили - запустить аварийный таймер
+            conditions:
+              - condition: trigger
+                id: switch_on
+              - condition: state
+                entity_id: timer.water_heater
+                state:
+                  - idle
+                  - paused
+            sequence:
+              - action: timer.start
+                target:
+                  entity_id: timer.water_heater
+                data:
+                  duration: "{{ states('input_number.water_heater_duration') | int(7200) }}"
+
+          - alias: Реле выключили - остановить таймер
+            conditions:
+              - condition: trigger
+                id: switch_off
+              - condition: state
+                entity_id: timer.water_heater
+                state:
+                  - active
+                  - paused
+            sequence:
+              - action: timer.cancel
+                target:
+                  entity_id: timer.water_heater
+
+          - alias: Вода горячая - выключить нагрев
+            conditions:
+              - condition: or
+                conditions:
+                  - alias: Термостат отключил ТЭН
+                    condition: trigger
+                    id: thermostat_off
+                  - alias: ТЭН не начал греть - вода уже горячая
+                    condition: and
+                    conditions:
+                      - condition: trigger
+                        id: not_heating
+                      - condition: state
+                        entity_id: binary_sensor.water_heater_heating
+                        state: "off"
+              - condition: state
+                entity_id: switch.water_heater
+                state: "on"
+            sequence:
+              - action: switch.turn_off
+                target:
+                  entity_id: switch.water_heater
+
+          - alias: Изменили длительность во время нагрева - пересчитать таймер
+            conditions:
+              - condition: trigger
+                id: duration_changed
+              - condition: state
+                entity_id: timer.water_heater
+                state: active
+            sequence:
+              - variables:
+                  remaining: >-
+                    {{ (as_timestamp(state_attr('timer.water_heater', 'finishes_at'))
+                        - trigger.from_state.state | float(0)
+                        + trigger.to_state.state | float(0)
+                        - as_timestamp(now())) | int(0) }}
+              - if:
+                  - condition: template
+                    value_template: "{{ remaining > 0 }}"
+                then:
+                  - action: timer.start
+                    target:
+                      entity_id: timer.water_heater
+                    data:
+                      duration: "{{ remaining }}"
+                else:
+                  - action: timer.finish
+                    target:
+                      entity_id: timer.water_heater
+
+          - alias: Таймер вышел или его отменили - выключить нагрев
+            conditions:
+              - condition: trigger
+                id:
+                  - timer_finished
+                  - timer_cancelled
+              - condition: state
+                entity_id: switch.water_heater
+                state: "on"
+            sequence:
+              - action: switch.turn_off
+                target:
+                  entity_id: switch.water_heater
+
+  - alias: Notifications - Water Heater
+    id: "1761907949866"
     mode: single
     triggers:
-      - trigger: numeric_state
-        entity_id:
-          - sensor.water_heater_power
-        below: 10
+      - trigger: state
+        entity_id: binary_sensor.water_heater_heating
+        from: "on"
+        to: "off"
+        id: hot
+      - trigger: state
+        entity_id: switch.water_heater
+        to: "on"
+        not_from:
+          - unknown
+          - unavailable
         for:
-          minutes: 6
+          minutes: 2
+        id: already_hot
+      - trigger: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.water_heater
+        id: too_long
     actions:
-      - action: switch.turn_off
-        target:
-          entity_id: switch.water_heater
+      - choose:
+          - alias: Вода горячая
+            conditions:
+              - condition: or
+                conditions:
+                  - alias: Термостат отключил ТЭН при включённом реле
+                    condition: trigger
+                    id: hot
+                  - alias: ТЭН не начал греть - вода уже горячая
+                    condition: and
+                    conditions:
+                      - condition: trigger
+                        id: already_hot
+                      - condition: state
+                        entity_id: binary_sensor.water_heater_heating
+                        state: "off"
+              - condition: state
+                entity_id: switch.water_heater
+                state: "on"
+            sequence:
+              - action: script.notify
+                data:
+                  description: Вода в бойлере горячая, можно идти в душ.
+                  persons:
+                    - person.semyon
+                    - person.iryna
+                  announce: true
+
+          - alias: Бойлер грел весь аварийный предел, а термостат не отключился
+            conditions:
+              - condition: trigger
+                id: too_long
+              - condition: numeric_state
+                entity_id: input_number.water_heater_duration
+                above: 7199
+            sequence:
+              - action: script.notify
+                data:
+                  description: >-
+                    Бойлер греет уже 2 часа, а термостат так и не отключил нагрев.
+                    Нагрев выключен. Скорее всего, с бойлером что-то не так -
+                    вода может быть не горячей.
+                  persons:
+                    - person.semyon
+                    - person.iryna
+                  announce: true
 
 rest:
   - resource: "https://cyprus-water.appspot.com/api/percentages"
@@ -85,4 +315,3 @@ rest:
         unit_of_measurement: "%"
         state_class: measurement
         icon: mdi:water-percent
-
