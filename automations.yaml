@@ -720,50 +720,6 @@
       entity_id: light.entryway
   mode: queued
   max: 10
-- id: '1761907949866'
-  alias: Notifications - Water Heater
-  description: ''
-  triggers:
-  - trigger: event
-    event_type: timer.finished
-    event_data:
-      entity_id: timer.water_heater
-    id: finished
-  - trigger: event
-    event_type: timer.cancelled
-    event_data:
-      entity_id: timer.water_heater
-    id: cancelled
-  conditions: []
-  actions:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - finished
-      sequence:
-      - action: script.notify
-        metadata: {}
-        data:
-          description: Водонагреватель закончил нагрев.
-          persons:
-          - person.semyon
-          - person.iryna
-          announce: true
-    - conditions:
-      - condition: trigger
-        id:
-        - cancelled
-      sequence:
-      - action: script.notify
-        metadata: {}
-        data:
-          description: Водонагреватель закончил нагрев даже раньше времени.
-          persons:
-          - person.semyon
-          - person.iryna
-          announce: true
-  mode: single
 - id: '1761997512031'
   alias: Notifications - Stove
   description: ''
@@ -803,46 +759,6 @@
       - person.semyon
       - person.iryna
       announce: true
-  mode: single
-- id: '1762005091052'
-  alias: Water Heating
-  description: ''
-  triggers:
-  - trigger: sun
-    event: sunrise
-    offset: 00:15:00
-  conditions:
-  - condition: state
-    entity_id: weather.forecast_home
-    state:
-    - cloudy
-    - exceptional
-    - fog
-    - hail
-    - lightning-rainy
-    - lightning
-    - partlycloudy
-    - pouring
-    - rainy
-    - snowy-rainy
-    - snowy
-    - windy-variant
-    - windy
-  - condition: numeric_state
-    entity_id: weather.forecast_home
-    attribute: temperature
-    below: 22
-  - condition: numeric_state
-    entity_id: weather.forecast_home
-    attribute: cloud_coverage
-    above: 75
-    enabled: false
-  actions:
-  - action: switch.turn_on
-    metadata: {}
-    data: {}
-    target:
-      entity_id: switch.water_heater
   mode: single
 - id: '1764069127198'
   alias: Knob - Semyon’s Bedroom
