@@ -15,11 +15,6 @@ input_number:
     unit_of_measurement: s
     icon: mdi:water-boiler
 
-input_boolean:
-  water_heating_schedule:
-    name: Automatic Water Heating
-    icon: mdi:water-boiler-auto
-
 template:
   - sensor:
       - name: Water Heater End Time
@@ -45,18 +40,49 @@ automation:
   - alias: Water Heating
     id: "1762005091052"
     description: >-
-      Всё управление бойлером. Утром в пасмурную прохладную погоду включает
-      нагрев (если включён input_boolean.water_heating_schedule). Выключает
-      нагрев, когда термостат бойлера отключил ТЭН (вода горячая), или если
-      ТЭН не начал греть за 2 минуты (вода уже горячая). Таймер на
-      input_number.water_heater_duration (2 часа) - аварийный предел.
-    mode: queued
-    max: 10
+      Утром в пасмурную прохладную погоду включает нагрев воды. Выключается
+      нагрев сам - автоматизацией "Water Heater - Auto-off".
+    mode: single
     triggers:
       - trigger: sun
         event: sunrise
         offset: "00:15:00"
-        id: schedule
+    conditions:
+      - condition: state
+        entity_id: weather.forecast_home
+        state:
+          - cloudy
+          - exceptional
+          - fog
+          - hail
+          - lightning-rainy
+          - lightning
+          - partlycloudy
+          - pouring
+          - rainy
+          - snowy-rainy
+          - snowy
+          - windy-variant
+          - windy
+      - condition: numeric_state
+        entity_id: weather.forecast_home
+        attribute: temperature
+        below: 22
+    actions:
+      - action: switch.turn_on
+        target:
+          entity_id: switch.water_heater
+
+  - alias: Water Heater - Auto-off
+    id: water_heater_auto_off
+    description: >-
+      Выключает бойлер, когда вода горячая: термостат отключил ТЭН или ТЭН не
+      начал греть за 2 минуты после включения. Аварийный предел -
+      timer.water_heater на input_number.water_heater_duration (2 часа),
+      таймер синхронизирован с реле.
+    mode: queued
+    max: 10
+    triggers:
       - trigger: state
         entity_id: switch.water_heater
         to: "on"
@@ -106,38 +132,6 @@ automation:
         id: timer_cancelled
     actions:
       - choose:
-          - alias: Утренний нагрев в пасмурную прохладную погоду
-            conditions:
-              - condition: trigger
-                id: schedule
-              - condition: state
-                entity_id: input_boolean.water_heating_schedule
-                state: "on"
-              - condition: state
-                entity_id: weather.forecast_home
-                state:
-                  - cloudy
-                  - exceptional
-                  - fog
-                  - hail
-                  - lightning-rainy
-                  - lightning
-                  - partlycloudy
-                  - pouring
-                  - rainy
-                  - snowy-rainy
-                  - snowy
-                  - windy-variant
-                  - windy
-              - condition: numeric_state
-                entity_id: weather.forecast_home
-                attribute: temperature
-                below: 22
-            sequence:
-              - action: switch.turn_on
-                target:
-                  entity_id: switch.water_heater
-
           - alias: Реле включили - запустить аварийный таймер
             conditions:
               - condition: trigger
