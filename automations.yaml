@@ -800,28 +800,6 @@
       - person.semyon
       description: Кофеварка сварила кофе.
   mode: single
-- id: '1764780210372'
-  alias: Zone - Iryna left
-  description: ''
-  triggers:
-  - trigger: state
-    entity_id: person.iryna
-  conditions:
-  - condition: template
-    value_template: "{{ zone_entity == 'zone.home' and trigger.from_state.state ==
-      'home' and trigger.to_state.state != 'home'\n  or trigger.from_state.state ==
-      zone_state and trigger.to_state.state != zone_state }}"
-  actions:
-  - alias: Notify that a person has left the zone
-    domain: mobile_app
-    type: notify
-    device_id: 1992ba14a20d3c2f1ebf50d0281bf8f9
-    message: '{{ person_name }} has left {{ zone_state }}'
-  variables:
-    zone_entity: zone.parents_home
-    zone_state: '{{ states[zone_entity].name }}'
-    person_entity: person.iryna
-    person_name: '{{ states[person_entity].name }}'
 - id: '1765355634872'
   alias: Notifications - Battery
   description: ''
