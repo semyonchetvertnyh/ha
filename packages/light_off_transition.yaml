@@ -1,0 +1,4 @@
+# Fade-in comes from light_profiles.csv (3 s), fade-out is set here.
+# See custom_components/light_off_transition.
+light_off_transition:
+  transition: 0.4
