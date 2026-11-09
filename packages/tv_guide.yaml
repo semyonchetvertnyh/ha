@@ -1,0 +1,41 @@
+# Телепрограмма для Plex: гид собирает сервис epg на NAS (стек media) из Dispatcharr.
+# /status отдаёт, на сколько часов вперёд есть программа (медиана по каналам).
+# Если Dispatcharr перестал обновлять гид от ottclub.tv, запас падает - предупреждаем
+# заранее, пока в Plex не появилось "Unknown Airing".
+
+rest:
+  - resource: https://tv.chetvertnyh.space/status
+    scan_interval: 3600
+    sensor:
+      - name: "TV Guide Hours Ahead"
+        unique_id: tv_guide_hours_ahead
+        icon: mdi:television-guide
+        value_template: "{{ value_json.hours_ahead }}"
+        unit_of_measurement: h
+        device_class: duration
+        state_class: measurement
+        json_attributes:
+          - guide_ends
+          - built_at
+          - min_hours_ahead
+          - channels
+          - channels_under_48h
+
+automation:
+  - alias: "Notifications - TV Guide"
+    id: notifications_tv_guide
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.tv_guide_hours_ahead
+        below: 48
+    actions:
+      - action: script.notify
+        data:
+          persons:
+            - person.semyon
+          announce: false
+          description: >-
+            Телепрограмма для Plex заканчивается: осталось около
+            {{ states('sensor.tv_guide_hours_ahead') | float(0) | round(0) }} часов.
+            Похоже, Dispatcharr перестал обновлять гид от ottclub.tv.
