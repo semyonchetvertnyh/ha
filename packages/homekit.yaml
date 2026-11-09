@@ -96,7 +96,7 @@ homekit:
         - light.irynas_bedroom_speakers_glow
         - light.irynas_bedside_lamp
         - light.semyons_bedroom_ceiling
-        - light.semyons_bedside_lamp
+        - light.semyons_desk_lamp
         - light.semyons_bedroom_bed_end_lamp
         - light.semyons_bedroom_bed_end_bar
         - light.desk_monitor_bar
@@ -217,8 +217,8 @@ homekit:
 
       light.semyons_bedroom_ceiling:
         name: Semyon’s Bedroom Ceiling Light
-      light.semyons_bedside_lamp:
-        name: Semyon’s Bedroom Bedside Lamp
+      light.semyons_desk_lamp:
+        name: Semyon’s Bedroom Desk Lamp
       light.semyons_bedside_glow:
         name: Semyon’s Bedroom Bedside Glow
       light.desk_monitor_bar:
