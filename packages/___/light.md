@@ -28,4 +28,4 @@
 # Semyon's Bedroom
 - binary_sensor.semyons_bedroom_occupancy
 - binary_sensor.semyons_bedroom_bright (device_class: light)
-- light.semyons_bedroom + light.semyons_desk_lamp
+- light.semyons_bedroom + light.desk_lamp
