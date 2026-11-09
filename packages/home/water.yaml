@@ -41,7 +41,7 @@ automation:
     id: "1762005091052"
     description: >-
       Утром в пасмурную или дождливую прохладную погоду включает нагрев воды.
-      Выключается нагрев сам - автоматизацией "Water Heater - Auto-off".
+      Выключается нагрев сам - автоматизацией "Water Heater".
     mode: single
     triggers:
       - trigger: sun
@@ -74,7 +74,7 @@ automation:
         target:
           entity_id: switch.water_heater
 
-  - alias: Water Heater - Auto-off
+  - alias: Water Heater
     id: water_heater_auto_off
     description: >-
       Выключает бойлер, когда вода горячая: термостат отключил ТЭН или ТЭН не
