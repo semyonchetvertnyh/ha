@@ -74,6 +74,15 @@ notify:
           selector:
             text:
     response_variable: notification
+    continue_on_error: true
+  - alias: Текст от ИИ, а если генерация упала - исходное описание как есть
+    variables:
+      ai: "{{ notification.data if notification is defined and notification.data is mapping else {} }}"
+      title_ru: "{{ ai.category_ru | default('🏠 Дом', true) }}"
+      title_ua: "{{ ai.category_ua | default('🏠 Дім', true) }}"
+      message_semyon: "{{ ai.message_for_semyon | default(description, true) }}"
+      message_iryna: "{{ ai.message_for_iryna | default(description, true) }}"
+      message_both: "{{ ai.message_for_both | default(description, true) }}"
   - parallel:
     - if:
       - condition: template
@@ -81,20 +90,20 @@ notify:
       then:
       - action: notify.persistent_notification
         data:
-          title: '{{ notification.data.category_ru }}'
-          message: '{{ notification.data.message_for_semyon }}'
+          title: "{{ title_ru }}"
+          message: "{{ message_semyon }}"
       - action: notify.semyons_devices
         data:
-          title: '{{ notification.data.category_ru }}'
-          message: '{{ notification.data.message_for_semyon }}'
+          title: "{{ title_ru }}"
+          message: "{{ message_semyon }}"
     - if:
       - condition: template
         value_template: '{{ ''person.iryna'' in persons }}'
       then:
       - action: notify.irynas_devices
         data:
-          title: '{{ notification.data.category_ua }}'
-          message: '{{ notification.data.message_for_iryna }}'
+          title: "{{ title_ua }}"
+          message: "{{ message_iryna }}"
     - if:
       - condition: template
         value_template: '{{ announce }}'
@@ -111,7 +120,7 @@ notify:
           - assist_satellite.living_room_speakers
           - assist_satellite.semyons_bedroom_speakers
         data:
-          message: '{{ notification.data.message_for_both }}'
+          message: "{{ message_both }}"
           preannounce: true
       # - action: tts.speak
       #   target:
