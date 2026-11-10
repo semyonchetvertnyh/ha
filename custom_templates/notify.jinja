@@ -1,0 +1,58 @@
+{#- Макросы для текстов уведомлений (script.notify). lang: 'ru' или 'ua'. -#}
+
+{#- День относительно сегодня: "сегодня", "завтра", "послезавтра", дальше "ср 11 ноября". -#}
+{% macro relative_day(dt, lang='ru') -%}
+{%- set d = as_local(as_datetime(dt)).date() -%}
+{%- set diff = (d - now().date()).days -%}
+{%- set rel = {'ru': ['сегодня', 'завтра', 'послезавтра'], 'ua': ['сьогодні', 'завтра', 'післязавтра']}[lang] -%}
+{%- if 0 <= diff <= 2 -%}
+{{ rel[diff] }}
+{%- else -%}
+{%- set wd = {'ru': ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'], 'ua': ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'нд']}[lang] -%}
+{%- set mon = {'ru': ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'],
+               'ua': ['січня', 'лютого', 'березня', 'квітня', 'травня', 'червня', 'липня', 'серпня', 'вересня', 'жовтня', 'листопада', 'грудня']}[lang] -%}
+{{ wd[d.weekday()] }} {{ d.day }} {{ mon[d.month - 1] }}
+{%- endif -%}
+{%- endmacro %}
+
+{#- Текст предупреждения MeteoAlarm. a - атрибуты binary_sensor.meteoalarm. -#}
+{% macro meteoalarm(a, lang='ru') -%}
+{%- set lv = ((a.awareness_level or '') | string).split(';') -%}
+{%- set color = lv[1] | trim | lower if lv | count > 1 else '' -%}
+{%- set colors = {
+  'yellow': {'icon': '🟡', 'ru': 'Жёлтый', 'ua': 'Жовтий'},
+  'orange': {'icon': '🟠', 'ru': 'Оранжевый', 'ua': 'Помаранчевий'},
+  'red': {'icon': '🔴', 'ru': 'Красный', 'ua': 'Червоний'}
+} -%}
+{%- set c = colors.get(color, {'icon': '⚠️', 'ru': 'Предупреждение', 'ua': 'Попередження'}) -%}
+{%- set level_word = {'ru': 'уровень', 'ua': 'рівень'}[lang] if color in colors else '' -%}
+{%- set tp = ((a.awareness_type or '') | string).split(';') -%}
+{%- set types = {
+  '1': {'ru': 'ветер', 'ua': 'вітер'},
+  '2': {'ru': 'снег и гололёд', 'ua': 'сніг і ожеледиця'},
+  '3': {'ru': 'гроза', 'ua': 'гроза'},
+  '4': {'ru': 'туман', 'ua': 'туман'},
+  '5': {'ru': 'жара', 'ua': 'спека'},
+  '6': {'ru': 'холод', 'ua': 'холод'},
+  '7': {'ru': 'шторм на побережье', 'ua': 'шторм на узбережжі'},
+  '8': {'ru': 'пожароопасность', 'ua': 'пожежна небезпека'},
+  '9': {'ru': 'лавины', 'ua': 'лавини'},
+  '10': {'ru': 'дождь', 'ua': 'дощ'},
+  '12': {'ru': 'наводнение', 'ua': 'повінь'},
+  '13': {'ru': 'ливни и паводки', 'ua': 'зливи і паводки'}
+} -%}
+{%- set t = types.get(tp[0] | trim, {}).get(lang) or (tp[1] | trim if tp | count > 1 else '') -%}
+{{ c.icon }} {{ c[lang] }}{{ ' ' ~ level_word if level_word }}{{ ': ' ~ t if t }}
+{%- set onset = a.onset -%}
+{%- set expires = a.expires -%}
+{%- if onset and expires -%}
+{%- set s = as_local(as_datetime(onset)) -%}
+{%- set f = as_local(as_datetime(expires)) -%}
+{%- set w = {'ru': ['с', 'до'], 'ua': ['з', 'до']}[lang] %}
+{% if s.date() == f.date() -%}
+{{ relative_day(s, lang) | capitalize }} {{ w[0] }} {{ s.strftime('%H:%M') }} {{ w[1] }} {{ f.strftime('%H:%M') }}
+{%- else -%}
+{{ w[0] | capitalize }} {{ s.strftime('%H:%M') }} {{ relative_day(s, lang) }} {{ w[1] }} {{ f.strftime('%H:%M') }} {{ relative_day(f, lang) }}
+{%- endif -%}
+{%- endif -%}
+{%- endmacro %}
