@@ -15,7 +15,9 @@ automation:
         data:
           persons:
             - person.iryna
-          description: Напомни Ире выпить стакан воды.
+          category: drinking_water
+          description: Пора выпить стакан воды.
+          description_ua: Час випити склянку води.
           announce: false
 
 schedule:

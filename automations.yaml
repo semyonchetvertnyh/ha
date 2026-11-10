@@ -189,12 +189,11 @@
   - action: script.notify
     metadata: {}
     data:
-      description: Стиралка завершила цикл стирки. Можно перекладывать постиранное
-        в сушилку.
+      description: Стиралка завершила цикл стирки. Можно перекладывать бельё в сушилку.
       persons:
       - person.semyon
-      - person.iryna
       announce: true
+      category: washer
   mode: single
 - id: '1760424916554'
   alias: Notifications - Dishwasher
@@ -214,6 +213,8 @@
       - person.semyon
       - person.iryna
       announce: true
+      category: dishwasher
+      description_ua: Посудомийка завершила цикл.
   mode: single
 - id: '1760424942896'
   alias: Notifications - Dryer
@@ -237,8 +238,8 @@
       description: Сушилка завершила цикл.
       persons:
       - person.semyon
-      - person.iryna
       announce: true
+      category: dryer
   mode: single
 - id: '1760436204228'
   alias: Notifications - Bathroom Humidity
@@ -257,11 +258,12 @@
   - action: script.notify
     metadata: {}
     data:
-      description: В ванной стало очень влажно. Видимо, кто-то принимает душ. Рекомендуй
-        открыть окно, чтобы проветрить.
+      description: В ванной стало очень влажно. Откройте окно, чтобы проветрить.
       persons:
       - person.semyon
       - person.iryna
+      category: humidity
+      description_ua: У ванній стало дуже волого. Відчиніть вікно, щоб провітрити.
   - wait_for_trigger:
     - trigger: state
       entity_id:
@@ -277,11 +279,12 @@
   - action: script.notify
     metadata: {}
     data:
-      description: Ты ранее рекомендовал открыть окно в ванной, чтобы проветрить,
-        потому что там стало слишком влажно. Его открыли. Похвали!
+      description: Окно в ванной открыли, спасибо!
       persons:
       - person.semyon
       - person.iryna
+      category: humidity
+      description_ua: Вікно у ванній відчинили, дякую!
   mode: single
 - id: '1760453651233'
   alias: Entryway Lock
@@ -467,6 +470,8 @@
         - person.iryna
         description: Робот-пылесос Боб закончил влажную уборку.
         announce: true
+        category: vacuum
+        description_ua: Робот-пилосос Боб закінчив вологе прибирання.
     else:
     - action: script.notify
       metadata: {}
@@ -476,6 +481,8 @@
         - person.iryna
         description: Робот-пылесос Боб закончил уборку.
         announce: true
+        category: vacuum
+        description_ua: Робот-пилосос Боб закінчив прибирання.
   mode: single
 - id: '1761231836888'
   alias: Iryna’s Bedroom Air Purifier
@@ -592,7 +599,7 @@
   triggers:
   - trigger: state
     entity_id:
-    - sensor.plex_on_nas_library_movies
+    - sensor.plex_library_movies
     attribute: last_added_item
     id: movie
   - trigger: state
@@ -602,17 +609,17 @@
     id: cartoon
   - trigger: state
     entity_id:
-    - sensor.plex_on_nas_library_tv_shows
+    - sensor.plex_library_tv_shows
     attribute: last_added_item
     id: tv_show_episode
   - trigger: state
     entity_id:
-    - sensor.plex_on_nas_library_tv_shows
+    - sensor.plex_library_tv_shows
     attribute: seasons
     id: tv_show_season
   - trigger: state
     entity_id:
-    - sensor.plex_on_nas_library_tv_shows
+    - sensor.plex_library_tv_shows
     attribute: shows
     id: tv_show
   conditions: []
@@ -627,8 +634,9 @@
         data:
           persons:
           - person.semyon
-          description: В медиатеку Plex добавлен новый фильм "{{ state_attr('sensor.plex_on_nas_library_movies',
-            'last_added_item') }}". Укажи название фильма, не указывай год.
+          description: Добавлен фильм "{{ state_attr('sensor.plex_library_movies',
+            'last_added_item') | regex_replace('\\s*\\(\\d{4}\\)$', '') }}".
+          category: movie
     - conditions:
       - condition: trigger
         id:
@@ -638,9 +646,10 @@
         data:
           persons:
           - person.semyon
-          description: В медиатеку Plex добавлен новый мультфильм "{{ state_attr('sensor.plex_on_nas_library_cartoons',
-            'last_added_item') }}". Укажи название мультифильма, не указывай год.
+          description: Добавлен мультфильм "{{ state_attr('sensor.plex_on_nas_library_cartoons',
+            'last_added_item') | regex_replace('\\s*\\(\\d{4}\\)$', '') }}".
           announce: false
+          category: cartoon
     - conditions:
       - condition: trigger
         id:
@@ -650,9 +659,9 @@
         data:
           persons:
           - person.semyon
-          description: В медиатеку Plex добавлена новая серия сериала "{{ state_attr('sensor.plex_on_nas_library_tv_shows',
-            'last_added_item') }}". Укажи название сериала, не указывай название серии
-            и ее порядковый номер.
+          description: Новая серия "{{ (state_attr('sensor.plex_library_tv_shows',
+            'last_added_item') or '').split(' - ')[0] }}".
+          category: tv_show
     - conditions:
       - condition: trigger
         id:
@@ -665,9 +674,11 @@
         data:
           persons:
           - person.semyon
-          description: В медиатеку Plex добавлен новый сезон сериала "{{ state_attr('sensor.plex_on_nas_library_tv_shows',
-            'last_added_item') }}". Укажи название сериала и номер сезона, не указывай
-            названия серий.
+          description: '{% set item = state_attr(''sensor.plex_library_tv_shows'',
+            ''last_added_item'') or '''' %}{% set s = item | regex_findall_index(''S(\\d+)E'',
+            0) if item is search(''S\\d+E'') else '''' %}Новый сезон{{ '' '' ~ (s
+            | int) if s }} сериала "{{ item.split('' - '')[0] }}".'
+          category: tv_show
     - conditions:
       - condition: trigger
         id:
@@ -680,9 +691,10 @@
         data:
           persons:
           - person.semyon
-          description: В медиатеку Plex добавлен новый сериал "{{ state_attr('sensor.plex_on_nas_library_tv_shows',
-            'last_added_item') }}". Укажи название сериала, не указывай год.
+          description: Новый сериал "{{ (state_attr('sensor.plex_library_tv_shows',
+            'last_added_item') or '').split(' - ')[0] }}".
           announce: false
+          category: tv_show
   mode: single
 - id: '1761750561648'
   alias: Switch - Entryway
@@ -734,11 +746,14 @@
     metadata: {}
     data:
       description: Кухонная плита работает дольше {{ state_attr('timer.stove', 'duration')
-        }}. Может быть, ее забыли выключить?
+        }}. Может быть, её забыли выключить?
       persons:
       - person.semyon
       - person.iryna
       announce: true
+      category: stove
+      description_ua: Кухонна плита працює довше {{ state_attr('timer.stove', 'duration')
+        }}. Можливо, її забули вимкнути?
   mode: single
 - id: '1761997575706'
   alias: Notifications - Oven
@@ -754,11 +769,14 @@
     metadata: {}
     data:
       description: Духовка работает дольше {{ state_attr('timer.oven', 'duration')
-        }}. Может быть, ее забыли выключить?
+        }}. Может быть, её забыли выключить?
       persons:
       - person.semyon
       - person.iryna
       announce: true
+      category: oven
+      description_ua: Духовка працює довше {{ state_attr('timer.oven', 'duration')
+        }}. Можливо, її забули вимкнути?
   mode: single
 - id: '1764069127198'
   alias: Knob - Semyon’s Bedroom
@@ -799,6 +817,7 @@
       persons:
       - person.semyon
       description: Кофеварка сварила кофе.
+      category: coffee
   mode: single
 - id: '1765355634872'
   alias: Notifications - Battery
@@ -845,13 +864,12 @@
       sequence:
       - action: script.notify
         data:
-          description: 'Входной замок зарядился до {{ states(''sensor.entryway_lock_battery'')
+          description: Входной замок зарядился до {{ states('sensor.entryway_lock_battery')
             }}%. Можно отключить пауербанк.
-
-            '
           persons:
           - person.semyon
           announce: false
+          category: battery
     - conditions:
       - condition: trigger
         id: bathroom_speaker
@@ -861,13 +879,12 @@
       sequence:
       - action: script.notify
         data:
-          description: 'Колонка в ванной зарядилась до {{ states(''sensor.bathroom_speaker_battery'')
+          description: Колонка в ванной зарядилась до {{ states('sensor.bathroom_speaker_battery')
             }}%. Можно отключить пауербанк.
-
-            '
           persons:
           - person.semyon
           announce: false
+          category: battery
     - conditions:
       - condition: trigger
         id: living_room_shade_left
@@ -877,13 +894,12 @@
       sequence:
       - action: script.notify
         data:
-          description: 'Драйвер для левой шторы в гостинной зарядился до {{ states(''sensor.living_room_shade_left_battery'')
+          description: Драйвер для левой шторы в гостиной зарядился до {{ states('sensor.living_room_shade_left_battery')
             }}%. Можно отключить пауербанк.
-
-            '
           persons:
           - person.semyon
           announce: false
+          category: battery
     - conditions:
       - condition: trigger
         id: living_room_shade_right
@@ -893,13 +909,12 @@
       sequence:
       - action: script.notify
         data:
-          description: 'Драйвер для правой шторы в гостинной зарядился до {{ states(''sensor.living_room_shade_right_battery'')
+          description: Драйвер для правой шторы в гостиной зарядился до {{ states('sensor.living_room_shade_right_battery')
             }}%. Можно отключить пауербанк.
-
-            '
           persons:
           - person.semyon
           announce: false
+          category: battery
     - conditions:
       - condition: trigger
         id: irynas_bedroom_shade
@@ -909,13 +924,12 @@
       sequence:
       - action: script.notify
         data:
-          description: 'Драйвер для шторы в Ириной спальне зарядился до {{ states(''sensor.irynas_bedroom_shade_battery'')
+          description: Драйвер для шторы в Иры спальне зарядился до {{ states('sensor.irynas_bedroom_shade_battery')
             }}%. Можно отключить пауербанк.
-
-            '
           persons:
           - person.semyon
           announce: false
+          category: battery
     - conditions:
       - condition: trigger
         id: semyons_bedroom_shade
@@ -925,13 +939,12 @@
       sequence:
       - action: script.notify
         data:
-          description: 'Драйвер для шторы в спальне Семена зарядился до {{ states(''sensor.semyons_bedroom_shade_battery'')
+          description: Драйвер для шторы в спальне Семёна зарядился до {{ states('sensor.semyons_bedroom_shade_battery')
             }}%. Можно отключить пауербанк.
-
-            '
           persons:
           - person.semyon
           announce: false
+          category: battery
   - delay:
       hours: 0
       minutes: 10
@@ -1192,29 +1205,11 @@
           persons:
           - person.semyon
           - person.iryna
-          description: 'Сработал meteoalarm.
-
-            Данные MeteoAlarm:
-
-            - event: {{ state_attr(''binary_sensor.meteoalarm'', ''event'') }}
-
-            - awareness_type: {{ state_attr(''binary_sensor.meteoalarm'', ''awareness_type'')
-            }}
-
-            - awareness_level: {{ state_attr(''binary_sensor.meteoalarm'', ''awareness_level'')
-            }}
-
-            - severity: {{ state_attr(''binary_sensor.meteoalarm'', ''severity'')
-            }}
-
-            - certainty: {{ state_attr(''binary_sensor.meteoalarm'', ''certainty'')
-            }}
-
-            - onset: {{ state_attr(''binary_sensor.meteoalarm'', ''onset'') }}
-
-            - expires: {{ state_attr(''binary_sensor.meteoalarm'', ''expires'') }}
-
-            '
+          description: '{% from ''notify.jinja'' import meteoalarm %}{{ meteoalarm(states.binary_sensor.meteoalarm.attributes,
+            ''ru'') }}'
+          category: meteoalarm
+          description_ua: '{% from ''notify.jinja'' import meteoalarm %}{{ meteoalarm(states.binary_sensor.meteoalarm.attributes,
+            ''ua'') }}'
     - conditions:
       - condition: trigger
         id:
@@ -1226,7 +1221,9 @@
           persons:
           - person.semyon
           - person.iryna
-          description: На улице пылевая буря. Нужно закрыть окна.
+          description: На улице пылевая буря. Закройте окна.
+          category: dust_storm
+          description_ua: На вулиці пилова буря. Зачиніть вікна.
   mode: single
 - id: '1769746691823'
   alias: Knob - Iryna’s Bedroom
@@ -1253,12 +1250,15 @@
   - action: script.notify
     metadata: {}
     data:
-      description: Утюг включен дольше {{ state_attr('timer.iron', 'duration') }}.
-        Вы еще гладите? Может быть, вы забыли его выключить?
+      description: Утюг включён дольше {{ state_attr('timer.iron', 'duration') }}.
+        Вы ещё гладите? Может быть, вы забыли его выключить?
       persons:
       - person.semyon
       - person.iryna
       announce: true
+      category: iron
+      description_ua: Праска увімкнена довше {{ state_attr('timer.iron', 'duration')
+        }}. Ви ще прасуєте? Можливо, ви забули її вимкнути?
   mode: single
 - id: '1770825125062'
   alias: Switch - Balcony
@@ -1350,6 +1350,7 @@
       description: Интернет был отключен, но теперь снова доступен.
       persons:
       - person.semyon
+      category: internet
   mode: single
 - id: '1773232820303'
   alias: 'Alarm - Arm/Disarm: Geofencing-based'

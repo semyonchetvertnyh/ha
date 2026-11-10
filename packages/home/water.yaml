@@ -274,7 +274,9 @@ automation:
             sequence:
               - action: script.notify
                 data:
+                  category: water_heater
                   description: Вода в бойлере горячая, можно идти в душ.
+                  description_ua: Вода в бойлері гаряча, можна йти в душ.
                   persons:
                     - person.semyon
                     - person.iryna
@@ -290,14 +292,14 @@ automation:
             sequence:
               - action: script.notify
                 data:
+                  category: water_heater
                   description: >-
                     Бойлер греет уже 2 часа, а термостат так и не отключил нагрев.
                     Нагрев выключен. Скорее всего, с бойлером что-то не так -
                     вода может быть не горячей.
                   persons:
                     - person.semyon
-                    - person.iryna
-                  announce: true
+                  announce: false
 
 rest:
   - resource: "https://cyprus-water.appspot.com/api/percentages"

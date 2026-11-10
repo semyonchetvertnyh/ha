@@ -1,13 +1,68 @@
 notify:
   alias: Notify
-  description: Sends a personalized notification for residents using Jarvis style.
+  description: >-
+    Sends a notification to residents: title is the category (ru for Semyon, ua for
+    Iryna), message is the description as is (description_ua for Iryna).
   fields:
+    category:
+      name: Category
+      description: Notification category, shown as the title.
+      required: true
+      selector:
+        select:
+          options:
+            - label: 💧 Влажность
+              value: humidity
+            - label: 🔋 Зарядка
+              value: battery
+            - label: ☕ Кофе
+              value: coffee
+            - label: 🍽️ Посудомойка
+              value: dishwasher
+            - label: 🌀 Сушилка
+              value: dryer
+            - label: 🧺 Стирка
+              value: washer
+            - label: 👔 Утюг
+              value: iron
+            - label: ♨️ Духовка
+              value: oven
+            - label: 🔥 Плита
+              value: stove
+            - label: 🧹 Уборка
+              value: vacuum
+            - label: 🚿 Горячая вода
+              value: water_heater
+            - label: 🥤 Вода
+              value: drinking_water
+            - label: 🌐 Интернет
+              value: internet
+            - label: 🎬 Новый фильм
+              value: movie
+            - label: 🧸 Новый мультфильм
+              value: cartoon
+            - label: 📺 Сериал
+              value: tv_show
+            - label: 🗓️ Телепрограмма
+              value: tv_guide
+            - label: ⚠️ Метеоаларм
+              value: meteoalarm
+            - label: 🌪️ Пылевая буря
+              value: dust_storm
     description:
       name: Description
-      description: Specify the event or situation to notify about.
+      description: Notification text in Russian (also used for voice).
+      required: true
       selector:
         text:
-      required: true
+          multiline: true
+    description_ua:
+      name: Description (UA)
+      description: Notification text in Ukrainian for Iryna. Falls back to description.
+      required: false
+      selector:
+        text:
+          multiline: true
     persons:
       name: Person(s)
       description: Specify the recipients.
@@ -19,70 +74,37 @@ notify:
     announce:
       name: Announce
       description: Toggle to enable or disable announcements.
+      default: false
       selector:
         boolean:
-      required: true
   sequence:
-  - action: ai_task.generate_data
-    data:
-      entity_id: ai_task.google_ai
-      task_name: Generate a notification text
-      instructions: 'Ты — J.A.R.V.I.S., цифровой дворецкий и ИИ Тони Старка: вежливый,
-        саркастичный, эффективный. Лёгкий юмор допустим, но всегда с достоинством.
-        Обращайся к **Семёну** всегда на русском и иногда как «сэр». Просто «сэр»,
-        **не** «сэр Семён». Обращайся к **Ирине** как «мисс» и всегда на украинском.
-        Просто «мисс», **не** «мисс Ирина».
-
-        Придумай оригинальное уведомление в своем стиле, но очень короткое. Используй
-        "ё", а не "е", где нужно.
-
-        {{ description }}
-
-        '
-      structure:
-        category_ru:
-          description: "Категория на русском языке с эмоджи в начале. Варианты:\n
-            \ - Высокая влажность\n  - Зарядка\n  - Постельное белье\n  - Кофе\n  -
-            Посудомойка\n  - Сушилка\n  - Интернет\n  - Утюг\n  - Вода\n  - Духовка\n
-            \ - Медиа\n  - Плита\n  - Уборка\n  - Стирка\n  - Горячая вода\n  - Погода\n
-            \ - Метеоаларм\nЕсли прямо ничего не подходит, придумай свою категорию.\n"
-          required: true
-          selector:
-            text:
-        category_ua:
-          description: Такая же категория, но на украинском языке.
-          required: true
-          selector:
-            text:
-        message_for_semyon:
-          description: Короткий текст уведомления на русском языке, обращенный к Семёну.
-          required: true
-          selector:
-            text:
-        message_for_iryna:
-          description: Такой же текст уведомления, но на украинском языке и обращенный
-            к Ирине.
-          required: true
-          selector:
-            text:
-        message_for_both:
-          description: 'Тот же самый текст уведомления на русском языке, но без обращения
-            к Семёну или Ирине напрямую. Будет использоваться для озвучивания голосом.
-
-            '
-          required: true
-          selector:
-            text:
-    response_variable: notification
-    continue_on_error: true
-  - alias: Текст от ИИ, а если генерация упала - исходное описание как есть
-    variables:
-      ai: "{{ notification.data if notification is defined and notification.data is mapping else {} }}"
-      title_ru: "{{ ai.category_ru | default('🏠 Дом', true) }}"
-      title_ua: "{{ ai.category_ua | default('🏠 Дім', true) }}"
-      message_semyon: "{{ ai.message_for_semyon | default(description, true) }}"
-      message_iryna: "{{ ai.message_for_iryna | default(description, true) }}"
-      message_both: "{{ ai.message_for_both | default(description, true) }}"
+  - variables:
+      categories:
+        humidity: ['💧 Влажность', '💧 Вологість']
+        battery: ['🔋 Зарядка', '🔋 Заряджання']
+        coffee: ['☕ Кофе', '☕ Кава']
+        dishwasher: ['🍽️ Посудомойка', '🍽️ Посудомийка']
+        dryer: ['🌀 Сушилка', '🌀 Сушарка']
+        washer: ['🧺 Стирка', '🧺 Прання']
+        iron: ['👔 Утюг', '👔 Праска']
+        oven: ['♨️ Духовка', '♨️ Духовка']
+        stove: ['🔥 Плита', '🔥 Плита']
+        vacuum: ['🧹 Уборка', '🧹 Прибирання']
+        water_heater: ['🚿 Горячая вода', '🚿 Гаряча вода']
+        drinking_water: ['🥤 Вода', '🥤 Вода']
+        internet: ['🌐 Интернет', '🌐 Інтернет']
+        movie: ['🎬 Новый фильм', '🎬 Новий фільм']
+        cartoon: ['🧸 Новый мультфильм', '🧸 Новий мультфільм']
+        tv_show: ['📺 Сериал', '📺 Серіал']
+        tv_guide: ['🗓️ Телепрограмма', '🗓️ Телепрограма']
+        meteoalarm: ['⚠️ Метеоаларм', '⚠️ Метеоаларм']
+        dust_storm: ['🌪️ Пылевая буря', '🌪️ Пилова буря']
+      titles: "{{ categories.get(category | default(''), ['🏠 Дом', '🏠 Дім']) }}"
+      title_ru: "{{ titles[0] }}"
+      title_ua: "{{ titles[1] }}"
+      message_semyon: "{{ description }}"
+      message_iryna: "{{ description_ua | default(description, true) }}"
+      message_both: "{{ description }}"
   - parallel:
     - if:
       - condition: template
@@ -106,7 +128,7 @@ notify:
           message: "{{ message_iryna }}"
     - if:
       - condition: template
-        value_template: '{{ announce }}'
+        value_template: '{{ announce | default(false) }}'
       - condition: state
         entity_id: binary_sensor.semyon_asleep
         state: 'off'
@@ -130,7 +152,7 @@ notify:
       #       - media_player.living_room_homepod
       #       - media_player.living_room_speakers
       #       - media_player.semyons_bedroom_speakers
-      #     message: "{{ notification.data.message_for_both }}"
+      #     message: "{{ message_both }}"
       #     cache: true
       # - choose:
       #     - conditions:
