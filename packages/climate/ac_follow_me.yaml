@@ -22,7 +22,7 @@ automation:
         update_interval: "/2"
 
 # Обёртка над climate.semyons_bedroom_ac_tuya: всё читает и пересылает в кондиционер,
-# кроме температуры и влажности - они всегда с датчиков у кровати.
+# кроме температуры - она всегда с датчика у кровати.
 # heat_cool кондиционера показываем как auto.
 # Скорость вентилятора у tuya_local - отдельная fan.semyons_bedroom_ac, здесь её нет.
 template:
@@ -37,7 +37,6 @@ template:
         target_temperature_step: 0.5
         precision: 0.1
         current_temperature: "{{ states('sensor.semyons_bedroom_temperature') | float(none) }}"
-        current_humidity: "{{ states('sensor.semyons_bedroom_humidity') | float(none) }}"
 
         hvac_modes: "{{ ['off', 'auto', 'cool', 'dry', 'fan_only', 'heat'] }}"
         hvac_mode: >
