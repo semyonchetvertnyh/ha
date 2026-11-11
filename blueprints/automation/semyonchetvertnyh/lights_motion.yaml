@@ -84,31 +84,45 @@ max_exceeded: silent
 variables:
   # !input нельзя использовать внутри шаблона напрямую — только через variables.
   blockers: !input block_entities
+  motion: !input motion_entity
 
 triggers:
   - trigger: state
     entity_id: !input motion_entity
     from: "off"
     to: "on"
+    id: motion
+
+  # Рестарт HA обрывает ожидание и паузу: горящий свет оставался гореть до
+  # следующего движения. После старта досчитываем выключение заново.
+  - trigger: homeassistant
+    event: start
+    id: start
 
 conditions:
   # Нативным condition: state это не выражается: со списком сущностей он
   # означает «все разом», а нам нужно «ни один из». Плюс так unavailable
-  # не превращается в блокировку.
-  - condition: template
-    value_template: "{{ blockers | select('is_state', 'on') | list | count == 0 }}"
+  # не превращается в блокировку. Блокировки касаются только включения.
+  - condition: or
+    conditions:
+      - condition: trigger
+        id: start
+      - condition: template
+        value_template: "{{ blockers | select('is_state', 'on') | list | count == 0 }}"
 
 actions:
-  - alias: Включить свет
-    action: light.turn_on
-    target: !input light_target
+  - if:
+      - condition: trigger
+        id: motion
+    then:
+      - alias: Включить свет
+        action: light.turn_on
+        target: !input light_target
 
+  # wait_template, а не wait_for_trigger: после рестарта датчик может быть уже
+  # off (ждать нечего) или ещё unavailable (ждём, пока станет off).
   - alias: Дождаться пропажи движения
-    wait_for_trigger:
-      - trigger: state
-        entity_id: !input motion_entity
-        from: "on"
-        to: "off"
+    wait_template: "{{ is_state(motion, 'off') }}"
 
   - alias: Выдержать паузу
     delay: !input no_motion_wait

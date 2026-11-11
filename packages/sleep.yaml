@@ -66,6 +66,14 @@ template:
       - trigger: state
         entity_id: person.semyon
         id: presence
+      # Рестарт HA / перезагрузка шаблонов: за простой теряются переходы окон (06:00, 11:00)
+      # и отсчёты "for", а template-триггер "bed" не срабатывает, если уже true на старте.
+      - trigger: homeassistant
+        event: start
+        id: recheck
+      - trigger: event
+        event_type: event_template_reloaded
+        id: recheck
     binary_sensor:
       - name: Semyon Asleep
         unique_id: semyon_asleep
@@ -74,8 +82,24 @@ template:
           {% set was = this.state == 'on' %}
           {% set bed = is_state('binary_sensor.bedtime_window', 'on') %}
           {% set wake = is_state('binary_sensor.wakeup_window', 'on') %}
-          {% if not is_state('person.semyon', 'home') %}
+          {% set p = states('person.semyon') %}
+          {% if p in ['unknown', 'unavailable'] %}
+            {# на старте person может быть ещё не определён - не сбрасывать сон #}
+            {{ was }}
+          {% elif p != 'home' %}
             false
+          {% elif trigger.id == 'recheck' %}
+            {% set dark = is_state('light.semyons_bedroom', 'off')
+                          and is_state('light.desk_monitor_bar', 'off')
+                          and is_state('binary_sensor.desk_occupancy', 'off')
+                          and is_state('binary_sensor.semyons_bedroom_occupancy', 'on') %}
+            {% if bed %}
+              {{ was or dark }}
+            {% elif wake %}
+              {{ was }}
+            {% else %}
+              false
+            {% endif %}
           {% elif trigger.id == 'bed' %}
             {{ bed or was }}
           {% elif trigger.id == 'up' %}
@@ -119,6 +143,10 @@ template:
       - trigger: event
         event_type: event_template_reloaded
         id: recheck
+      # рестарт HA - то же, что перезагрузка шаблонов
+      - trigger: homeassistant
+        event: start
+        id: recheck
       - trigger: state
         entity_id: cover.irynas_bedroom_shade
         from: "closed"
@@ -145,19 +173,31 @@ template:
           {% set was = this.state == 'on' %}
           {% set bed = is_state('binary_sensor.bedtime_window', 'on') %}
           {% set wake = is_state('binary_sensor.wakeup_window', 'on') %}
-          {% if not is_state('person.iryna', 'home') %}
+          {% set p = states('person.iryna') %}
+          {% if p in ['unknown', 'unavailable'] %}
+            {# на старте person может быть ещё не определён - не сбрасывать сон #}
+            {{ was }}
+          {% elif p != 'home' %}
             false
           {% elif trigger.id == 'bed' %}
             {{ bed or was }}
           {% elif trigger.id == 'light_on' %}
             false
           {% elif trigger.id == 'recheck' %}
-            {# после перезагрузки шаблонов: если в вечернем окне весь свет уже погашен человеком - спит #}
+            {# рестарт HA / перезагрузка шаблонов: если в вечернем окне весь свет уже погашен человеком - спит;
+               днём (вне обоих окон) - не спит, даже если страховку 11:00 пропустили за время простоя #}
             {% set dark = is_state('light.irynas_bedroom_speakers_glow', 'off')
                           and is_state('light.irynas_bedroom_ceiling', 'off')
                           and is_state('light.irynas_bedside_lamp', 'off')
                           and states.light.irynas_bedroom_speakers_glow.context.parent_id is none %}
-            {{ (was and is_state('light.irynas_bedroom_ceiling', 'off')) or (bed and dark) }}
+            {% set kept = was and is_state('light.irynas_bedroom_ceiling', 'off') %}
+            {% if bed %}
+              {{ kept or dark }}
+            {% elif wake %}
+              {{ kept }}
+            {% else %}
+              false
+            {% endif %}
           {% elif trigger.id == 'up' %}
             {{ was and not wake }}
           {% elif trigger.id == 'bed_fallback' %}
@@ -204,7 +244,54 @@ automation:
         to: ["on", "off"]
         not_from: ["unavailable", "unknown"]
         id: iryna
+      # Рестарт HA: датчики сна приходят из unavailable (это not_from отсекает), а их
+      # recheck может поменять значение до того, как переход станет виден. Через 30 с
+      # после старта просто приводим Sleep Mode к текущим датчикам.
+      - trigger: homeassistant
+        event: start
+        id: start
     actions:
+      - if:
+          - condition: trigger
+            id: start
+        then:
+          - delay: "00:00:30"
+          - if:
+              - condition: state
+                entity_id: binary_sensor.residents_asleep
+                state: "on"
+            then:
+              - action: switch.turn_on
+                target:
+                  entity_id:
+                    - switch.adaptive_lighting_sleep_mode
+                    - switch.adaptive_lighting_bathroom_sleep_mode
+          - if:
+              - condition: state
+                entity_id: binary_sensor.residents_asleep
+                state: "off"
+            then:
+              - action: switch.turn_off
+                target:
+                  entity_id:
+                    - switch.adaptive_lighting_sleep_mode
+                    - switch.adaptive_lighting_bathroom_sleep_mode
+          - if:
+              - condition: state
+                entity_id: binary_sensor.iryna_asleep
+                state: "on"
+            then:
+              - action: switch.turn_on
+                target:
+                  entity_id: switch.adaptive_lighting_iryna_s_bedroom_sleep_mode
+          - if:
+              - condition: state
+                entity_id: binary_sensor.iryna_asleep
+                state: "off"
+            then:
+              - action: switch.turn_off
+                target:
+                  entity_id: switch.adaptive_lighting_iryna_s_bedroom_sleep_mode
       - choose:
           - conditions:
               - condition: trigger

@@ -131,8 +131,62 @@ automation:
         event_data:
           entity_id: timer.water_heater
         id: timer_cancelled
+      # Рестарт HA теряет: переход "ТЭН перестал греть" (сенсор приходит из unavailable),
+      # отсчёт "2 минуты не греет" и timer.finished, если таймер истёк во время простоя
+      # (событие летит при восстановлении таймера, когда автоматизации ещё не слушают).
+      - trigger: homeassistant
+        event: start
+        id: start
     actions:
       - choose:
+          - alias: Рестарт HA - сверить реле, таймер и нагрев
+            conditions:
+              - condition: trigger
+                id: start
+            sequence:
+              - wait_template: >-
+                  {{ has_value('switch.water_heater')
+                     and has_value('binary_sensor.water_heater_heating') }}
+                timeout: "00:02:00"
+                continue_on_timeout: false
+              - if:
+                  - condition: state
+                    entity_id: switch.water_heater
+                    state: "on"
+                then:
+                  - if:
+                      - condition: state
+                        entity_id: timer.water_heater
+                        state: idle
+                    then:
+                      - action: timer.start
+                        target:
+                          entity_id: timer.water_heater
+                        data:
+                          duration: "{{ states('input_number.water_heater_duration') | int(7200) }}"
+                  # термостат делает паузы до ~20 с, поэтому ждём, не начнёт ли ТЭН греть
+                  - wait_template: "{{ is_state('binary_sensor.water_heater_heating', 'on') }}"
+                    timeout: "00:00:30"
+                  - if:
+                      - condition: state
+                        entity_id: binary_sensor.water_heater_heating
+                        state: "off"
+                    then:
+                      - action: switch.turn_off
+                        target:
+                          entity_id: switch.water_heater
+                else:
+                  - if:
+                      - condition: state
+                        entity_id: timer.water_heater
+                        state:
+                          - active
+                          - paused
+                    then:
+                      - action: timer.cancel
+                        target:
+                          entity_id: timer.water_heater
+
           - alias: Реле включили - запустить аварийный таймер
             conditions:
               - condition: trigger

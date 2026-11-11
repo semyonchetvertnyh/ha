@@ -345,7 +345,7 @@ triggers:
 
   - trigger: homeassistant
     event: start
-    id: reset
+    id: start
 
   - trigger: state
     entity_id: !input self_automation
@@ -479,7 +479,54 @@ actions:
             data:
               transition: !input transition_off
 
-      - alias: Рестарт HA или включение автоматизации — сбросить состояние
+      # Раньше рестарт всегда сбрасывал в idle: свет, зажжённый автоматом, переставал
+      # считаться своим и горел, пока в зону снова не зайдут. Отсчёты "for" рестарт
+      # тоже обнуляет, а датчик, уже "off" к моменту старта, перехода не даст.
+      - alias: Рестарт HA — сверить состояние с реальностью
+        conditions:
+          - condition: trigger
+            id: start
+        sequence:
+          - if:
+              - condition: state
+                entity_id: !input state_helper
+                state: auto
+              - alias: Свет ещё горит
+                condition: template
+                value_template: >
+                  {{ targets | select('is_state', 'on') | list | count > 0 }}
+            then:
+              - if:
+                  - alias: В зоне пусто и свидетели молчат
+                    condition: state
+                    entity_id: !input presence_entity
+                    state: "off"
+                  - condition: template
+                    value_template: >
+                      {{ witness_list
+                         | select('is_state', ['on', 'playing', 'paused'])
+                         | list | count == 0 }}
+                then:
+                  - action: input_select.select_option
+                    target:
+                      entity_id: !input state_helper
+                    data:
+                      option: idle
+                  - action: light.turn_off
+                    target:
+                      entity_id: !input light_target
+                    data:
+                      transition: !input transition_off
+              # иначе остаёмся в auto: человек в зоне (или датчик ещё не поднялся),
+              # и обычная ветка ухода погасит свет по переходу в off
+            else:
+              - action: input_select.select_option
+                target:
+                  entity_id: !input state_helper
+                data:
+                  option: idle
+
+      - alias: Включение автоматизации — сбросить состояние
         conditions:
           - condition: trigger
             id: reset

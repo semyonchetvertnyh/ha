@@ -141,13 +141,15 @@ automation:
 
   - alias: Lights - Bathroom
     id: lights_bathroom
+    # свой lights_motion вместо стокового motion_light: тот не переживает рестарт HA
     use_blueprint:
-      path: homeassistant/motion_light.yaml
+      path: semyonchetvertnyh/lights_motion.yaml
       input:
         motion_entity: binary_sensor.bathroom_occupancy
         light_target:
           entity_id: light.bathroom
-        no_motion_wait: 120
+        no_motion_wait:
+          seconds: 120
 
   - alias: Lights - Entryway
     id: lights_entryway
