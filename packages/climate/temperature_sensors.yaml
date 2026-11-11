@@ -37,7 +37,7 @@ sensor:
     unique_id: irynas_bedroom_temperature
     type: mean
     entities:
-      - sensor.irynas_bedroom_presence_sensor_temperature
+      # Only the bedside sensor: the presence sensor hangs high above the door and reads ~1.5°C too warm
       - sensor.irynas_bedroom_air_purifier_temperature
   - platform: group
     name: "Iryna’s Bedroom Humidity"
