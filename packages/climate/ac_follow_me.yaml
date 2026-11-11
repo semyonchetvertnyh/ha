@@ -3,7 +3,8 @@
 # Пакеты шлёт Broadlink RM4 по блюпринту hamsando/midea_followme.yaml (коды внутри, целые градусы).
 # Шлём всегда, в любом режиме: и для heat, и для cool ему нужна температура у кровати.
 # Выключенный кондиционер коды игнорирует (не включается, не пищит) и показывает свой датчик,
-# поэтому для HA и HomeKit поверх него обёртка "Semyon’s Bedroom Climate" с температурой у кровати.
+# поэтому для HA и HomeKit поверх него обёртка climate.semyons_bedroom_ac с температурой у кровати,
+# а сам кондиционер tuya_local переименован в climate.semyons_bedroom_ac_tuya.
 # Спальня Иры пока не подключена: Broadlink есть только в спальне Семёна.
 # План: Notion "Кондиционер по датчику у кровати".
 
@@ -20,16 +21,16 @@ automation:
         ir_emitter: infrared.wi_fi_universal_remote_ir_emitter
         update_interval: "/2"
 
-# Обёртка над climate.semyons_bedroom_ac: всё читает и пересылает в кондиционер,
+# Обёртка над climate.semyons_bedroom_ac_tuya: всё читает и пересылает в кондиционер,
 # кроме температуры и влажности - они всегда с датчиков у кровати.
 # heat_cool кондиционера показываем как auto.
 # Скорость вентилятора у tuya_local - отдельная fan.semyons_bedroom_ac, здесь её нет.
 template:
   - climate:
-      - name: "Semyon’s Bedroom Climate"
+      - name: "Semyon’s Bedroom AC"
         unique_id: semyons_bedroom_climate
         icon: mdi:air-conditioner
-        availability: "{{ has_value('climate.semyons_bedroom_ac') }}"
+        availability: "{{ has_value('climate.semyons_bedroom_ac_tuya') }}"
         temperature_unit: "°C"
         min_temperature: 16
         max_temperature: 30
@@ -40,46 +41,46 @@ template:
 
         hvac_modes: "{{ ['off', 'auto', 'cool', 'dry', 'fan_only', 'heat'] }}"
         hvac_mode: >
-          {% set mode = states('climate.semyons_bedroom_ac') %}
+          {% set mode = states('climate.semyons_bedroom_ac_tuya') %}
           {{ 'auto' if mode == 'heat_cool' else mode }}
         set_hvac_mode:
           - action: climate.set_hvac_mode
             target:
-              entity_id: climate.semyons_bedroom_ac
+              entity_id: climate.semyons_bedroom_ac_tuya
             data:
               hvac_mode: "{{ 'heat_cool' if hvac_mode == 'auto' else hvac_mode }}"
 
-        target_temperature: "{{ state_attr('climate.semyons_bedroom_ac', 'temperature') }}"
+        target_temperature: "{{ state_attr('climate.semyons_bedroom_ac_tuya', 'temperature') }}"
         set_temperature:
           - action: climate.set_temperature
             target:
-              entity_id: climate.semyons_bedroom_ac
+              entity_id: climate.semyons_bedroom_ac_tuya
             data:
               temperature: "{{ temperature }}"
 
-        preset_modes: "{{ state_attr('climate.semyons_bedroom_ac', 'preset_modes') }}"
-        preset_mode: "{{ state_attr('climate.semyons_bedroom_ac', 'preset_mode') }}"
+        preset_modes: "{{ state_attr('climate.semyons_bedroom_ac_tuya', 'preset_modes') }}"
+        preset_mode: "{{ state_attr('climate.semyons_bedroom_ac_tuya', 'preset_mode') }}"
         set_preset_mode:
           - action: climate.set_preset_mode
             target:
-              entity_id: climate.semyons_bedroom_ac
+              entity_id: climate.semyons_bedroom_ac_tuya
             data:
               preset_mode: "{{ preset_mode }}"
 
-        swing_modes: "{{ state_attr('climate.semyons_bedroom_ac', 'swing_modes') }}"
-        swing_mode: "{{ state_attr('climate.semyons_bedroom_ac', 'swing_mode') }}"
+        swing_modes: "{{ state_attr('climate.semyons_bedroom_ac_tuya', 'swing_modes') }}"
+        swing_mode: "{{ state_attr('climate.semyons_bedroom_ac_tuya', 'swing_mode') }}"
         set_swing_mode:
           - action: climate.set_swing_mode
             target:
-              entity_id: climate.semyons_bedroom_ac
+              entity_id: climate.semyons_bedroom_ac_tuya
             data:
               swing_mode: "{{ swing_mode }}"
 
-        swing_horizontal_modes: "{{ state_attr('climate.semyons_bedroom_ac', 'swing_horizontal_modes') }}"
-        swing_horizontal_mode: "{{ state_attr('climate.semyons_bedroom_ac', 'swing_horizontal_mode') }}"
+        swing_horizontal_modes: "{{ state_attr('climate.semyons_bedroom_ac_tuya', 'swing_horizontal_modes') }}"
+        swing_horizontal_mode: "{{ state_attr('climate.semyons_bedroom_ac_tuya', 'swing_horizontal_mode') }}"
         set_swing_horizontal_mode:
           - action: climate.set_swing_horizontal_mode
             target:
-              entity_id: climate.semyons_bedroom_ac
+              entity_id: climate.semyons_bedroom_ac_tuya
             data:
               swing_horizontal_mode: "{{ swing_horizontal_mode }}"
