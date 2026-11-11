@@ -1,0 +1,20 @@
+# Follow Me: кондиционер (Inventor, протокол Midea, пульт RG10A) берёт комнатную температуру
+# не со своего датчика под потолком, а из ИК-пакетов Follow Me с температурой датчика у кровати.
+# Пакеты шлёт Broadlink RM4 по блюпринту hamsando/midea_followme.yaml (коды внутри, целые градусы).
+# Шлём всегда, в любом режиме и при выключенном кондиционере: и для heat, и для cool
+# ему нужна температура у кровати, а не под потолком.
+# Спальня Иры пока не подключена: Broadlink есть только в спальне Семёна.
+# План: Notion "Кондиционер по датчику у кровати".
+
+automation:
+  - alias: "AC - Follow Me"
+    id: ac_follow_me
+    description: >
+      Передаёт кондиционеру в спальне Семёна температуру датчика у кровати через ИК Follow Me
+      (Broadlink): при каждом изменении датчика и раз в 2 минуты, в любом режиме.
+    use_blueprint:
+      path: hamsando/midea_followme.yaml
+      input:
+        target_temperature_sensor: sensor.semyons_bedroom_temperature
+        ir_emitter: infrared.wi_fi_universal_remote_ir_emitter
+        update_interval: "/2"
