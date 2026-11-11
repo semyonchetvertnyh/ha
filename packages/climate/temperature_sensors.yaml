@@ -18,7 +18,7 @@ template:
 
       - name: "Semyon’s Bedroom Temperature"
         unique_id: semyons_bedroom_temperature
-        state: "{{ states('sensor.semyons_bedroom_air_monitor_panel_temperature') | float(0) | round(0) }}"
+        state: "{{ states('sensor.semyons_bedroom_air_monitor_panel_temperature') | float(0) | round(1) }}"
         availability: "{{ has_value('sensor.semyons_bedroom_air_monitor_panel_temperature') }}"
         device_class: temperature
         unit_of_measurement: °C

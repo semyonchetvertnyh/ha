@@ -1,0 +1,79 @@
+input_number:
+  heating_night_target:
+    name: "Heating - Night Target"
+    min: 18
+    max: 24
+    step: 0.5
+    unit_of_measurement: "°C"
+    icon: mdi:thermometer
+
+automation:
+  - alias: "Heating - Night"
+    id: heating_night
+    description: >
+      Пока человек спит, подстраивает уставку кондиционера в его спальне по датчику у кровати.
+      Кондиционер не включает и не выключает, режим не меняет: работает, только если он уже на heat.
+      Шаг 1°C, гистерезис 0,5°C, не чаще раза в 15 минут. План: Notion "Ночной обогрев спален".
+    mode: queued
+    max: 5
+    trace:
+      stored_traces: 20
+    triggers:
+      - trigger: time_pattern
+        minutes: "/15"
+        note: "Регулировка раз в 15 минут: кондиционер успевает отреагировать на прошлый шаг."
+      - trigger: state
+        entity_id:
+          - binary_sensor.semyon_asleep
+          - binary_sensor.iryna_asleep
+        to: "on"
+        note: "Первая подстройка сразу, как человек уснул."
+      - trigger: state
+        entity_id:
+          - climate.semyons_bedroom_ac
+          - climate.irynas_bedroom_ac
+        to: "heat"
+        note: "Обогрев включили, когда человек уже спит."
+    actions:
+      - repeat:
+          for_each:
+            - climate: climate.semyons_bedroom_ac
+              sensor: sensor.semyons_bedroom_temperature
+              asleep: binary_sensor.semyon_asleep
+              max_setpoint: 27
+            - climate: climate.irynas_bedroom_ac
+              sensor: sensor.irynas_bedroom_temperature
+              asleep: binary_sensor.iryna_asleep
+              max_setpoint: 28
+          sequence:
+            - variables:
+                target: "{{ states('input_number.heating_night_target') | float(21) }}"
+                room: "{{ states(repeat.item.sensor) }}"
+                setpoint: "{{ state_attr(repeat.item.climate, 'temperature') }}"
+            - if:
+                - condition: template
+                  value_template: >
+                    {{ is_state(repeat.item.asleep, 'on')
+                       and is_state(repeat.item.climate, 'heat')
+                       and is_number(room) and is_number(setpoint) }}
+              then:
+                - variables:
+                    new_setpoint: >
+                      {% set diff = target - room | float %}
+                      {% set current = setpoint | float %}
+                      {% if diff >= 0.5 %}
+                        {{ [current + 1, repeat.item.max_setpoint] | min }}
+                      {% elif diff <= -0.5 %}
+                        {{ [current - 1, 18] | max }}
+                      {% else %}
+                        {{ current }}
+                      {% endif %}
+                - if:
+                    - condition: template
+                      value_template: "{{ new_setpoint | float != setpoint | float }}"
+                  then:
+                    - action: climate.set_temperature
+                      target:
+                        entity_id: "{{ repeat.item.climate }}"
+                      data:
+                        temperature: "{{ new_setpoint | float }}"
