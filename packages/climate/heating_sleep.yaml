@@ -145,3 +145,41 @@ automation:
               - action: climate.turn_off
                 target:
                   entity_id: "{{ room.climate }}"
+
+  # Перенесена 11.11.2026 из UI-автоматизации "Semyons Bedroom AC LED" (id 1783934989428) без изменений логики.
+  - alias: "AC LED - Sleep"
+    id: ac_led_sleep
+    description: >
+      Гасит LED кондиционера в спальне Семёна, пока он спит: когда он уснул (semyon_asleep)
+      или когда кондиционер включили, пока он спит. Раньше было по binary_sensor.night (удалён 11.11.2026).
+      Триггер включения ждёт 1.5 секунды, чтобы "Semyon’s Bedroom AC LED" (packages/climate/ac_led.yaml)
+      успел отметить, что LED загорелся (иначе гонка и команда не уходит).
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.semyon_asleep
+        not_from: ["unavailable", "unknown"]
+        to: "on"
+        id: asleep
+      - trigger: state
+        entity_id: climate.semyons_bedroom_ac
+        from: "off"
+        not_to: ["unavailable", "unknown"]
+        for:
+          seconds: 1
+          milliseconds: 500
+        id: ac_on
+    conditions:
+      - condition: state
+        entity_id: binary_sensor.semyon_asleep
+        state: "on"
+      - condition: climate.is_on
+        target:
+          entity_id: climate.semyons_bedroom_ac
+        options:
+          behavior: any
+          for: "00:00:00"
+    actions:
+      - action: switch.turn_off
+        target:
+          entity_id: switch.semyons_bedroom_ac_led

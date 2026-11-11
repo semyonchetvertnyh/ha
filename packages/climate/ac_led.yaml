@@ -41,7 +41,10 @@ template:
                   entity_id: input_boolean.semyons_bedroom_ac_led
 
 automation:
-  - alias: "Semyon’s Bedroom AC LED: Sync"
+  # Не логика, а учёт: LED загорается сам при включении кондиционера, а переключается только
+  # ИК-командой toggle_led без обратной связи, поэтому его состояние держим в input_boolean.
+  # Гасит LED ночью "AC LED - Sleep" в packages/climate/heating_sleep.yaml.
+  - alias: "Semyon’s Bedroom AC LED"
     id: semyons_bedroom_ac_led_sync
     mode: restart
     # Любой режим, кроме off, = кондиционер включён (и LED на нём загорается сам).

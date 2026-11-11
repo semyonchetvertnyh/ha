@@ -1399,45 +1399,6 @@
           - switch.living_room_camera_detect
         data: {}
   mode: single
-- id: '1783934989428'
-  alias: Semyons Bedroom AC LED
-  description: 'Гасит LED кондиционера, пока Семён спит: когда он уснул (semyon_asleep)
-    или когда кондиционер включили, пока он спит. Раньше было по binary_sensor.night.
-    Триггер включения ждёт 1.5 секунды, чтобы Sync успел отметить, что LED загорелся
-    (иначе гонка и команда не уходит).'
-  triggers:
-  - entity_id: binary_sensor.semyon_asleep
-    id: asleep
-    not_from:
-    - unavailable
-    - unknown
-    to: 'on'
-    trigger: state
-  - entity_id: climate.semyons_bedroom_ac
-    from: 'off'
-    id: ac_on
-    not_to:
-    - unavailable
-    - unknown
-    trigger: state
-    for:
-      seconds: 1
-      milliseconds: 500
-  conditions:
-  - condition: state
-    entity_id: binary_sensor.semyon_asleep
-    state: 'on'
-  - condition: climate.is_on
-    options:
-      behavior: any
-      for: 00:00:00
-    target:
-      entity_id: climate.semyons_bedroom_ac
-  actions:
-  - action: switch.turn_off
-    target:
-      entity_id: switch.semyons_bedroom_ac_led
-  mode: single
 - id: '1784740616477'
   alias: 'Cooling: Geofencing-based'
   description: Cooling - Geofencing (Proximity + Zone)
