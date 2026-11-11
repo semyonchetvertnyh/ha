@@ -7,6 +7,9 @@ input_number:
     unit_of_measurement: "°C"
     icon: mdi:thermometer
 
+# Спальня Иры временно отключена (закомментирована) в обеих автоматизациях:
+# сначала отлаживаем на спальне Семёна, потом включаем Ире, если нужно.
+
 automation:
   - alias: "Heating - Night"
     id: heating_night
@@ -25,13 +28,13 @@ automation:
       - trigger: state
         entity_id:
           - binary_sensor.semyon_asleep
-          - binary_sensor.iryna_asleep
+          # - binary_sensor.iryna_asleep
         to: "on"
         note: "Первая подстройка сразу, как человек уснул."
       - trigger: state
         entity_id:
           - climate.semyons_bedroom_ac
-          - climate.irynas_bedroom_ac
+          # - climate.irynas_bedroom_ac
         to: "heat"
         note: "Обогрев включили, когда человек уже спит."
     actions:
@@ -41,10 +44,10 @@ automation:
               sensor: sensor.semyons_bedroom_temperature
               asleep: binary_sensor.semyon_asleep
               max_setpoint: 27
-            - climate: climate.irynas_bedroom_ac
-              sensor: sensor.irynas_bedroom_temperature
-              asleep: binary_sensor.iryna_asleep
-              max_setpoint: 28
+            # - climate: climate.irynas_bedroom_ac
+            #   sensor: sensor.irynas_bedroom_temperature
+            #   asleep: binary_sensor.iryna_asleep
+            #   max_setpoint: 28
           sequence:
             - variables:
                 target: "{{ states('input_number.heating_night_target') | float(21) }}"
@@ -77,3 +80,66 @@ automation:
                         entity_id: "{{ repeat.item.climate }}"
                       data:
                         temperature: "{{ new_setpoint | float }}"
+
+  - alias: "Heating - Night On/Off"
+    id: heating_night_on_off
+    description: >
+      Уснул, человек в спальне и у кровати холоднее цели на 1°C и больше - включить обогрев
+      со стартовой уставкой (дальше подстраивает "Heating - Night"). Проснулся - выключить обогрев.
+      Пока выключена: включим после отладки "Heating - Night".
+    mode: queued
+    max: 5
+    triggers:
+      - trigger: state
+        entity_id:
+          - binary_sensor.semyon_asleep
+          # - binary_sensor.iryna_asleep
+        to: "on"
+        id: asleep
+      - trigger: state
+        entity_id:
+          - binary_sensor.semyon_asleep
+          # - binary_sensor.iryna_asleep
+        to: "off"
+        id: awake
+    actions:
+      - variables:
+          rooms:
+            binary_sensor.semyon_asleep:
+              climate: climate.semyons_bedroom_ac
+              sensor: sensor.semyons_bedroom_temperature
+              occupancy: binary_sensor.semyons_bedroom_occupancy
+              start_setpoint: 24
+            # binary_sensor.iryna_asleep:
+            #   climate: climate.irynas_bedroom_ac
+            #   sensor: sensor.irynas_bedroom_temperature
+            #   occupancy: binary_sensor.irynas_bedroom_occupancy
+            #   start_setpoint: 24
+          room: "{{ rooms[trigger.entity_id] }}"
+          target: "{{ states('input_number.heating_night_target') | float(21) }}"
+      - choose:
+          - conditions:
+              - condition: trigger
+                id: asleep
+              - condition: template
+                value_template: >
+                  {{ is_state(room.climate, 'off')
+                     and is_state(room.occupancy, 'on')
+                     and is_number(states(room.sensor))
+                     and states(room.sensor) | float < target - 1 }}
+            sequence:
+              - action: climate.set_temperature
+                target:
+                  entity_id: "{{ room.climate }}"
+                data:
+                  hvac_mode: heat
+                  temperature: "{{ room.start_setpoint }}"
+          - conditions:
+              - condition: trigger
+                id: awake
+              - condition: template
+                value_template: "{{ is_state(room.climate, 'heat') }}"
+            sequence:
+              - action: climate.turn_off
+                target:
+                  entity_id: "{{ room.climate }}"
