@@ -1,6 +1,6 @@
 input_number:
-  heating_night_target:
-    name: "Heating - Night Target"
+  heating_sleep_target:
+    name: "Heating - Sleep Target"
     min: 18
     max: 24
     step: 0.5
@@ -9,9 +9,11 @@ input_number:
 
 # Спальня Иры временно отключена (закомментирована) в обеих автоматизациях:
 # сначала отлаживаем на спальне Семёна, потом включаем Ире, если нужно.
+# После отладки обе автоматизации сливаем в одну "Heating - Sleep".
+# id автоматизаций (heating_night*) оставлены прежними, чтобы сохранить метки, категорию и историю.
 
 automation:
-  - alias: "Heating - Night"
+  - alias: "Heating - Sleep Setpoint"
     id: heating_night
     description: >
       Пока человек спит, подстраивает уставку кондиционера в его спальне по датчику у кровати.
@@ -50,7 +52,7 @@ automation:
             #   max_setpoint: 28
           sequence:
             - variables:
-                target: "{{ states('input_number.heating_night_target') | float(21) }}"
+                target: "{{ states('input_number.heating_sleep_target') | float(21) }}"
                 room: "{{ states(repeat.item.sensor) }}"
                 setpoint: "{{ state_attr(repeat.item.climate, 'temperature') }}"
             - if:
@@ -81,12 +83,12 @@ automation:
                       data:
                         temperature: "{{ new_setpoint | float }}"
 
-  - alias: "Heating - Night On/Off"
+  - alias: "Heating - Sleep On/Off"
     id: heating_night_on_off
     description: >
       Уснул, человек в спальне и у кровати холоднее цели на 1°C и больше - включить обогрев
-      со стартовой уставкой (дальше подстраивает "Heating - Night"). Проснулся - выключить обогрев.
-      Пока выключена: включим после отладки "Heating - Night".
+      со стартовой уставкой (дальше подстраивает "Heating - Sleep Setpoint"). Проснулся - выключить обогрев.
+      Пока выключена: включим после отладки "Heating - Sleep Setpoint".
     mode: queued
     max: 5
     triggers:
@@ -116,7 +118,7 @@ automation:
             #   occupancy: binary_sensor.irynas_bedroom_occupancy
             #   start_setpoint: 24
           room: "{{ rooms[trigger.entity_id] }}"
-          target: "{{ states('input_number.heating_night_target') | float(21) }}"
+          target: "{{ states('input_number.heating_sleep_target') | float(21) }}"
       - choose:
           - conditions:
               - condition: trigger
