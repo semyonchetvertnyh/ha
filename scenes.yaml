@@ -47,3 +47,10 @@
     light.desk_monitor_bar: "off"
 
     light.christmas_tree: "off"
+
+- id: christmas
+  name: Christmas
+  icon: mdi:pine-tree
+  entities:
+    light.balcony_string_lights: "on"
+    light.christmas_tree: "on"
