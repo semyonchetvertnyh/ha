@@ -1,0 +1,102 @@
+# Переключатель LED кондиционера (Inventor/Midea), который управляется только ИК-командой toggle без обратной связи.
+# Состояние держит сам переключатель (trigger-based): LED загорается сам при включении кондиционера,
+# гаснет при выключении, а turn_on/turn_off шлют toggle, только если состояние другое.
+# Используется в packages/climate/ (по одному на комнату); гасит LED ночью автоматизация на блюпринте ac_ir.yaml.
+blueprint:
+  name: AC LED switch (IR toggle)
+  description: >
+    A switch for an AC display LED that can only be toggled by an IR command and has no feedback.
+    The LED lights up by itself when the AC turns on and goes dark when it turns off, so the switch
+    follows the AC; turning it on or off sends the toggle command only when the state differs.
+  domain: template
+  author: Semyon Chetvertnyh
+  homeassistant:
+    min_version: 2026.4.0
+  source_url: https://github.com/semyonchetvertnyh/ha/blob/main/blueprints/template/semyonchetvertnyh/ac_led.yaml
+  input:
+    climate:
+      name: AC
+      description: Climate entity of the AC.
+      selector:
+        entity:
+          filter:
+            - domain: climate
+    remote:
+      name: IR remote
+      description: Broadlink remote that sends the toggle command.
+      selector:
+        entity:
+          filter:
+            - domain: remote
+    device:
+      name: Device name in the remote
+      description: Device the toggle command was learned under (remote.learn_command), e.g. semyons_bedroom_ac.
+      selector:
+        text:
+    command:
+      name: Toggle command
+      default: toggle_led
+      selector:
+        text:
+
+variables:
+  climate_entity: !input climate
+
+triggers:
+  # Любой режим, кроме off, = кондиционер включён (и LED на нём загорается сам).
+  - trigger: state
+    entity_id: !input climate
+    from: "off"
+    not_to: ["off", "unavailable", "unknown"]
+    id: "on"
+  - trigger: state
+    entity_id: !input climate
+    to: "off"
+    not_from: ["off", "unavailable", "unknown"]
+    id: "off"
+  # turn_on/turn_off сообщают новое состояние событием.
+  - trigger: event
+    event_type: ac_led_set
+    id: set
+
+switch:
+  - state: >
+      {% if trigger.id == 'on' %}
+        true
+      {% elif trigger.id == 'off' %}
+        false
+      {% elif trigger.event.data.climate == climate_entity %}
+        {{ trigger.event.data.state }}
+      {% else %}
+        {{ this.state == 'on' }}
+      {% endif %}
+    turn_on:
+      - if:
+          - condition: template
+            value_template: "{{ this.state == 'off' }}"
+        then:
+          - action: remote.send_command
+            target:
+              entity_id: !input remote
+            data:
+              device: !input device
+              command: !input command
+          - event: ac_led_set
+            event_data:
+              climate: !input climate
+              state: true
+    turn_off:
+      - if:
+          - condition: template
+            value_template: "{{ this.state == 'on' }}"
+        then:
+          - action: remote.send_command
+            target:
+              entity_id: !input remote
+            data:
+              device: !input device
+              command: !input command
+          - event: ac_led_set
+            event_data:
+              climate: !input climate
+              state: false

@@ -1,78 +1,14 @@
-input_boolean:
-  semyons_bedroom_ac_led:
-    name: "Semyon’s Bedroom AC LED"
+# Переключатели LED кондиционеров - на template-блюпринте semyonchetvertnyh/ac_led.yaml.
+# LED переключается только ИК-командой toggle_led без обратной связи, поэтому состояние держит сам переключатель:
+# загорается сам при включении кондиционера, гаснет при выключении.
+# Гасит LED ночью автоматизация "Semyon’s Bedroom AC" (packages/climate/ac_follow_me.yaml).
 
 template:
-  - switch:
-      - name: "Semyon’s Bedroom AC LED"
-        unique_id: semyons_bedroom_ac_led
-        state: "{{ is_state('input_boolean.semyons_bedroom_ac_led', 'on') }}"
-
-        turn_on:
-          - if:
-              - condition: state
-                entity_id: input_boolean.semyons_bedroom_ac_led
-                state: "off"
-            then:
-              - action: remote.send_command
-                target:
-                  entity_id: remote.semyons_bedroom
-                data:
-                  device: semyons_bedroom_ac
-                  command: toggle_led
-              - action: input_boolean.turn_on
-                target:
-                  entity_id: input_boolean.semyons_bedroom_ac_led
-
-        turn_off:
-          - if:
-              - condition: state
-                entity_id: input_boolean.semyons_bedroom_ac_led
-                state: "on"
-            then:
-              - action: remote.send_command
-                target:
-                  entity_id: remote.semyons_bedroom
-                data:
-                  device: semyons_bedroom_ac
-                  command: toggle_led
-              - action: input_boolean.turn_off
-                target:
-                  entity_id: input_boolean.semyons_bedroom_ac_led
-
-automation:
-  # Не логика, а учёт: LED загорается сам при включении кондиционера, а переключается только
-  # ИК-командой toggle_led без обратной связи, поэтому его состояние держим в input_boolean.
-  # Гасит LED ночью "Semyon’s Bedroom AC" в packages/climate/semyons_bedroom_ac.yaml.
-  - alias: "Semyon’s Bedroom AC LED"
-    id: semyons_bedroom_ac_led_sync
-    mode: restart
-    # Любой режим, кроме off, = кондиционер включён (и LED на нём загорается сам).
-    #   Раньше был список режимов, и heat_cool в него не попал: 04.11 в 5:43 LED не погас ночью.
-    triggers:
-      - trigger: state
-        entity_id: climate.semyons_bedroom_ac
-        from: "off"
-        not_to: ["off", "unavailable", "unknown"]
-        id: "on"
-      - trigger: state
-        entity_id: climate.semyons_bedroom_ac
-        to: "off"
-        not_from: ["off", "unavailable", "unknown"]
-        id: "off"
-    actions:
-      - choose:
-          - conditions:
-              - condition: trigger
-                id: "on"
-            sequence:
-              - action: input_boolean.turn_on
-                target:
-                  entity_id: input_boolean.semyons_bedroom_ac_led
-          - conditions:
-              - condition: trigger
-                id: "off"
-            sequence:
-              - action: input_boolean.turn_off
-                target:
-                  entity_id: input_boolean.semyons_bedroom_ac_led
+  - use_blueprint:
+      path: semyonchetvertnyh/ac_led.yaml
+      input:
+        climate: climate.semyons_bedroom_ac
+        remote: remote.semyons_bedroom
+        device: semyons_bedroom_ac
+    name: "Semyon’s Bedroom AC LED"
+    unique_id: semyons_bedroom_ac_led

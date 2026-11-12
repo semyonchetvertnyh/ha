@@ -10,11 +10,12 @@ blueprint:
 
     LED (optional): turns the AC LED switch off while the sleep sensor is on - when the person
     falls asleep or when the AC is switched on during sleep. The switch-on trigger waits 1.5 s
-    so the LED switch can register that the LED lit up.
+    so the LED switch (template blueprint semyonchetvertnyh/ac_led.yaml) can register that the LED lit up.
   domain: automation
+  author: Semyon Chetvertnyh
   homeassistant:
     min_version: 2026.4.0
-  source_url: https://github.com/semyonchetvertnyh/ha/blob/main/blueprints/automation/semyon/midea_ac.yaml
+  source_url: https://github.com/semyonchetvertnyh/ha/blob/main/blueprints/automation/semyonchetvertnyh/ac_ir.yaml
   input:
     temperature_sensor:
       name: Temperature sensor

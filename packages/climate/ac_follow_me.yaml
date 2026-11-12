@@ -1,6 +1,6 @@
 # Обёртка над кондиционером в спальне Семёна для HA и HomeKit.
-# Кондиционер получает температуру у кровати через Follow Me (автоматизация "Semyon’s Bedroom AC",
-# packages/climate/semyons_bedroom_ac.yaml), но выключенный показывает свой датчик под потолком,
+# Кондиционер получает температуру у кровати через Follow Me (автоматизация "Semyon’s Bedroom AC"
+# ниже в этом файле), но выключенный показывает свой датчик под потолком,
 # поэтому поверх него обёртка climate.semyons_bedroom_ac с температурой у кровати,
 # а сам кондиционер tuya_local переименован в climate.semyons_bedroom_ac_tuya.
 # План: Notion "Кондиционер по датчику у кровати".
@@ -67,3 +67,27 @@ template:
               entity_id: climate.semyons_bedroom_ac_tuya
             data:
               swing_horizontal_mode: "{{ swing_horizontal_mode }}"
+
+
+# Вся логика кондиционера в спальне Семёна - одна автоматизация на блюпринте semyonchetvertnyh/ac_ir.yaml
+# (объединены "AC - Follow Me" и "AC LED - Sleep"): Follow Me через ИК и LED, пока Семён спит.
+# Тот же блюпринт - для гостиной и спальни Иры, когда там появятся RM4 Mini.
+# Обёртка climate.semyons_bedroom_ac - выше в этом файле,
+# переключатель LED - в packages/climate/ac_led.yaml (template-блюпринт semyonchetvertnyh/ac_led.yaml).
+# План: Notion "Кондиционер по датчику у кровати".
+automation:
+  - alias: "Semyon’s Bedroom AC"
+    id: semyons_bedroom_ac
+    description: >
+      Follow Me: передаёт кондиционеру в спальне Семёна температуру датчика у кровати через ИК
+      (Broadlink) при каждом изменении датчика и раз в 2 минуты, в любом режиме.
+      LED: гасит LED кондиционера, пока Семён спит.
+    use_blueprint:
+      path: semyonchetvertnyh/ac_ir.yaml
+      input:
+        temperature_sensor: sensor.semyons_bedroom_temperature
+        remote: remote.semyons_bedroom
+        climate: climate.semyons_bedroom_ac
+        update_interval: "/2"
+        asleep_sensor: binary_sensor.semyon_asleep
+        led_switch: switch.semyons_bedroom_ac_led
