@@ -1,8 +1,3 @@
-input_boolean:
-  semyons_sleep_focus_mode:
-    name: "Semyon’s Sleep Focus Mode"
-    icon: mdi:sleep
-
 notify:
   - platform: group
     name: "Semyon’s Devices"
