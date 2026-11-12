@@ -1,5 +1,8 @@
 streams:
-  building_entrance: hass://supervisor?entity_id=camera.building_entrance
+  # building_entrance: hass://supervisor?entity_id=camera.building_entrance
+  building_entrance:
+    - "http://supervisor/core/api/camera_proxy/camera.building_entrance#header=Authorization: Bearer ${SUPERVISOR_TOKEN}"
+    - ffmpeg:my_camera#video=h264#input=--re -stream_loop -1 -f image2 -framerate 1 -i {input}
 
   # entryway_doorbell:
   #   - hass:Entryway Doorbell
