@@ -1,6 +1,5 @@
 streams:
-  building_entrance:
-    - hass://supervisor?entity_id=camera.building_entrance
+  building_entrance: hass://supervisor?entity_id=camera.building_entrance
 
   # entryway_doorbell:
   #   - hass:Entryway Doorbell
@@ -22,11 +21,11 @@ homekit:
   #   device_id: building_entrance
   #   device_private: building_entrance
 
-  doorbell:
-    name: Doorbell
-    pin: "56781234"
-    pairings:
-      - client_id=8F73DCA2-F609-47F8-A91E-04F0EE01A8D1&client_public=63c659fe8e044c05306a68fb42470728e1bce6e772b284601dc37b46b295157b&permissions=0
+  # doorbell:
+  #   name: Doorbell
+  #   pin: "56781234"
+  #   pairings:
+  #     - client_id=8F73DCA2-F609-47F8-A91E-04F0EE01A8D1&client_public=63c659fe8e044c05306a68fb42470728e1bce6e772b284601dc37b46b295157b&permissions=0
 
   kitchen_camera:
     name: Kitchen Camera

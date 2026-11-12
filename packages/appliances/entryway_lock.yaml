@@ -55,6 +55,17 @@ automation:
         {{ (now() - states.lock.entryway.last_changed).total_seconds() > 3 }}
 
     actions:
+      # retained в homekit/state - это состояние ридера, а не команда.
+      # Стираем, чтобы после рестарта HA, переподключения MQTT или reload
+      # автоматизаций брокер не отдал его как новую команду
+      - if: "{{ trigger.id == 'homekey_command' and trigger.payload != '' }}"
+        then:
+          - action: mqtt.publish
+            data:
+              topic: entryway_lock_homekey/homekit/state
+              payload: ""
+              retain: true
+
       - choose:
 
           # =========================
