@@ -114,7 +114,8 @@ homekit:
         # - climate.semyons_bedroom_heater
 
         # Christmas
-        # - light.christmas_tree
+        - light.christmas_tree
+        - light.balcony_string_lights
 
     entity_config:
 
