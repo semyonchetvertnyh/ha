@@ -3,7 +3,7 @@ humidifier:
     name: "Semyon’s Bedroom Oil Diffuser"
     unique_id: "semyons_bedroom_oil_diffuser"
 
-    current_humidity_template: "{{ states('sensor.irynas_bedroom_humidity') }}"
+    current_humidity_template: "{{ states('sensor.semyons_bedroom_humidity') }}"
     target_humidity_template: 100
     min_humidity: 40
     max_humidity: 100
@@ -31,4 +31,3 @@ humidifier:
         data:
           option: >
             {{ "on" if mode == 'Heavy Spray' else "eco" }}
-

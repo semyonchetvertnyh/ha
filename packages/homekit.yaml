@@ -71,6 +71,7 @@ homekit:
 
         # Fans
         - fan.homekit_irynas_bedroom_air_purifier
+        - humidifier.semyons_bedroom_oil_diffuser
 
         # Air Quality
         - sensor.semyons_bedroom_air_monitor_panel_co2
@@ -202,6 +203,8 @@ homekit:
         type: air_purifier
         linked_pm25_sensor: sensor.irynas_bedroom_air_purifier_pm2_5
         linked_filter_life_level_sensor: sensor.irynas_bedroom_air_purifier_filter_life_level
+      humidifier.semyons_bedroom_oil_diffuser:
+        name: Semyon’s Bedroom Oil Diffuser
 
       # Air Quality
       sensor.semyons_bedroom_air_monitor_panel_co2:
