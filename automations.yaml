@@ -1585,3 +1585,22 @@
       target:
         entity_id: light.semyons_bedroom_oil_diffuser
   mode: single
+- id: '1794500380807'
+  alias: iCloud - Reload
+  description: Перезагружает iCloud, когда она просит переавторизацию из-за протухшей
+    сессии Apple (примерно раз в 8 часов)
+  triggers:
+  - event_data:
+      action: create
+      domain: homeassistant
+      issue_id: config_entry_reauth_icloud_01M6Y6C498HDEWVXM1DFFJ1THE
+    event_type: repairs_issue_registry_updated
+    trigger: event
+  actions:
+  - delay: 00:00:30
+  - action: homeassistant.reload_config_entry
+    data:
+      entry_id: 01M6Y6C498HDEWVXM1DFFJ1THE
+  - delay: 00:10:00
+  max_exceeded: silent
+  mode: single
