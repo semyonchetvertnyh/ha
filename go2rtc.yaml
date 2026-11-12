@@ -1,8 +1,5 @@
 streams:
-  # building_entrance: hass://supervisor?entity_id=camera.building_entrance
-  building_entrance:
-    - "http://supervisor/core/api/camera_proxy/camera.building_entrance#header=Authorization: Bearer ${SUPERVISOR_TOKEN}"
-    - ffmpeg:my_camera#video=h264#input=--re -stream_loop -1 -f image2 -framerate 1 -i {input}
+  building_entrance: hass://supervisor?entity_id=camera.building_entrance
 
   # entryway_doorbell:
   #   - hass:Entryway Doorbell
@@ -16,13 +13,22 @@ streams:
     - hass:Living Room Camera Hub
     - ffmpeg:living_room_camera#audio=aac#audio=opus
 
+# https://github.com/AlexxIT/go2rtc/tree/dev/internal/homekit
 homekit:
   # building_entrance:
   #   name: Intercom
   #   pin: "19550224"
   #   category_id: doorbell
+
+  #   # device_id и device_private заданы явно: так пара с HomeKit сохранится, даже если поменяется ID потока.
   #   device_id: building_entrance
   #   device_private: building_entrance
+
+  #   # С motion: api пишется только то, что началось со звонка в домофон, и поток поднимается только в этот момент. Минус: первые пару секунд до подключения в запись не попадут.
+  #   # Когда HKSV выйдет в релиз, continuous можно попробовать на день-два. Если звонки, видео в Hik-Connect и картинка на панели работают как раньше, а клипов не слишком много, оставить его.
+  #   # Если нет, вернуться на api.
+  #   # hksv: true
+  #   # motion: api
 
   # doorbell:
   #   name: Doorbell

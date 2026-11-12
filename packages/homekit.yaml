@@ -233,6 +233,10 @@ homekit:
       light.balcony_floor_lamp:
         name: Balcony Floor Lamp
 
+      # Christmas
+      light.balcony_string_lights:
+        name: Balcony Strings Lights
+
       # Switches
       switch.semyons_bedroom_ac_led:
         name: Semyon’s Bedroom AC
