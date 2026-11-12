@@ -18,7 +18,7 @@ automation:
       path: hamsando/midea_followme.yaml
       input:
         target_temperature_sensor: sensor.semyons_bedroom_temperature
-        ir_emitter: infrared.wi_fi_universal_remote_ir_emitter
+        ir_emitter: infrared.semyons_bedroom
         update_interval: "/2"
 
 # Обёртка над climate.semyons_bedroom_ac_tuya: всё читает и пересылает в кондиционер,

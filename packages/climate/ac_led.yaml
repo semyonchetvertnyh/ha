@@ -16,7 +16,7 @@ template:
             then:
               - action: remote.send_command
                 target:
-                  entity_id: remote.wi_fi_universal_remote
+                  entity_id: remote.semyons_bedroom
                 data:
                   device: semyons_bedroom_ac
                   command: toggle_led
@@ -32,7 +32,7 @@ template:
             then:
               - action: remote.send_command
                 target:
-                  entity_id: remote.wi_fi_universal_remote
+                  entity_id: remote.semyons_bedroom
                 data:
                   device: semyons_bedroom_ac
                   command: toggle_led
