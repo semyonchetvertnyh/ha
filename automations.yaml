@@ -1628,3 +1628,15 @@
   - delay: 00:10:00
   max_exceeded: silent
   mode: single
+- id: washdata_mwdvjygu
+  alias: 'Washer: Cycle started'
+  description: Created by WashData for Washer. Add your actions (notify, lights, ...).
+  triggers:
+  - trigger: ha_washdata.cycle_started
+    target:
+      device_id:
+      - 74e78b6cab09e9455bcb295b5ff51eb0
+    options: {}
+  conditions: []
+  actions: []
+  mode: single
