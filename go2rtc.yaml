@@ -1,5 +1,8 @@
 streams:
-  doorbell: 
+  entrance_building:
+    - hass://localhost?entity_id=camera.building_entrance
+
+  doorbell:
     - hass:Entryway Doorbell
     - ffmpeg:doorbell#audio=aac#audio=opus
 
@@ -12,6 +15,13 @@ streams:
     - ffmpeg:living_room_camera#audio=aac#audio=opus
 
 homekit:
+  # building_entrance:
+  #   name: Intercom
+  #   pin: "19550224"
+  #   category_id: doorbell
+  #   device_id: building_entrance
+  #   device_private: building_entrance
+
   doorbell:
     name: Doorbell
     pin: "56781234"

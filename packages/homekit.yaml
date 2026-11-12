@@ -249,6 +249,19 @@ homekit:
       lock.building_entrance:
         name: Building Entrance
 
+  - name: HA Intercom
+    port: 21066
+    mode: accessory
+    filter:
+      include_entities:
+        - camera.building_entrance
+    entity_config:
+      camera.building_entrance:
+        name: Intercom
+        video_codec: copy
+        support_audio: false
+        linked_doorbell_sensor: event.intercom_doorbell
+
 template:
 
   - fan:
