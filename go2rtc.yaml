@@ -1,10 +1,10 @@
 streams:
-  entrance_building:
-    - hass://localhost?entity_id=camera.building_entrance
+  building_entrance:
+    - hass://supervisor?entity_id=camera.building_entrance
 
-  doorbell:
-    - hass:Entryway Doorbell
-    - ffmpeg:doorbell#audio=aac#audio=opus
+  # entryway_doorbell:
+  #   - hass:Entryway Doorbell
+  #   - ffmpeg:doorbell#audio=aac#audio=opus
 
   kitchen_camera:
     - hass:Kitchen Camera Hub
