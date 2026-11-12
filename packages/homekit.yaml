@@ -60,6 +60,7 @@ homekit:
         # Humidity
         - sensor.living_room_humidity
         - sensor.irynas_bedroom_humidity
+        - sensor.semyons_bedroom_humidity
         - sensor.bathroom_humidity
 
         # Cover

@@ -20,7 +20,6 @@ template:
         target_temperature_step: 0.5
         precision: 0.1
         current_temperature: "{{ states('sensor.semyons_bedroom_temperature') | float(none) }}"
-        current_humidity: "{{ states('sensor.semyons_bedroom_humidity') | float(none) }}"
 
         hvac_modes: "{{ ['off', 'auto', 'cool', 'dry', 'fan_only', 'heat'] }}"
         hvac_mode: >
