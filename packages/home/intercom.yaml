@@ -1,0 +1,27 @@
+# Домофон (hikconnect_intercom): панель Intercom в прихожей, дверь подъезда - camera/lock.building_entrance.
+
+automation:
+  - alias: "Intercom Ringtone"
+    id: intercom_ringtone
+    description: >
+      Звонок панели молчит, пока спит хоть кто-то (semyon_asleep / iryna_asleep),
+      и возвращается на 7, когда не спит никто. Событие ring в HA и звонок
+      в Hik-Connect при этом остаются. Пока выключена.
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id:
+          - binary_sensor.semyon_asleep
+          - binary_sensor.iryna_asleep
+        not_from: [unavailable, unknown]
+        not_to: [unavailable, unknown]
+      - trigger: homeassistant
+        event: start
+    actions:
+      - action: number.set_value
+        target:
+          entity_id: number.intercom_ringtone_volume
+        data:
+          value: >
+            {{ 0 if is_state('binary_sensor.semyon_asleep', 'on')
+                  or is_state('binary_sensor.iryna_asleep', 'on') else 7 }}
