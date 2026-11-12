@@ -55,13 +55,11 @@ homekit:
         # Temperature
         # - sensor.living_room_temperature
         - sensor.irynas_bedroom_temperature
-        - sensor.semyons_bedroom_temperature
         - sensor.bathroom_temperature
 
         # Humidity
         - sensor.living_room_humidity
         - sensor.irynas_bedroom_humidity
-        - sensor.semyons_bedroom_humidity
         - sensor.bathroom_humidity
 
         # Cover
@@ -128,9 +126,15 @@ homekit:
       alarm_control_panel.home:
         name: Security
         # code: !secret alarm_code
+      binary_sensor.entryway_door:
+        name: Entryway Door
+        linked_battery_sensor: sensor.entryway_door_sensor_battery
       binary_sensor.balcony_door:
         name: Balcony Door
         linked_battery_sensor: sensor.balcony_door_sensor_battery
+      binary_sensor.laundry_door:
+        name: Laundry Door
+        linked_battery_sensor: sensor.laundry_door_sensor_battery
       binary_sensor.irynas_bedroom_window:
         name: Iryna’s Bedroom Window
         linked_battery_sensor: sensor.irynas_bedroom_window_sensor_battery
@@ -173,6 +177,11 @@ homekit:
       #   type: heater_cooler
       # climate.semyons_bedroom_ac:
       #   type: heater_cooler
+
+      # Temperature
+      sensor.bathroom_temperature:
+        name: Bathroom Temperature
+        linked_battery_sensor: sensor.bathroom_temperature_sensor_battery
 
       # Cover
       cover.living_room_shade_left:
