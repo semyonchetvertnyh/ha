@@ -1,0 +1,23 @@
+# Вся логика кондиционера в спальне Семёна - одна автоматизация на блюпринте semyon/midea_ac.yaml
+# (объединены "AC - Follow Me" и "AC LED - Sleep"): Follow Me через ИК и LED, пока Семён спит.
+# Тот же блюпринт - для гостиной и спальни Иры, когда там появятся RM4 Mini.
+# Обёртка climate.semyons_bedroom_ac - в packages/climate/ac_follow_me.yaml,
+# переключатель LED - в packages/climate/ac_led.yaml.
+# План: Notion "Кондиционер по датчику у кровати".
+
+automation:
+  - alias: "Semyon’s Bedroom AC"
+    id: semyons_bedroom_ac
+    description: >
+      Follow Me: передаёт кондиционеру в спальне Семёна температуру датчика у кровати через ИК
+      (Broadlink) при каждом изменении датчика и раз в 2 минуты, в любом режиме.
+      LED: гасит LED кондиционера, пока Семён спит.
+    use_blueprint:
+      path: semyon/midea_ac.yaml
+      input:
+        temperature_sensor: sensor.semyons_bedroom_temperature
+        remote: remote.semyons_bedroom
+        climate: climate.semyons_bedroom_ac
+        update_interval: "/2"
+        asleep_sensor: binary_sensor.semyon_asleep
+        led_switch: switch.semyons_bedroom_ac_led

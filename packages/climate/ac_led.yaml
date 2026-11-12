@@ -43,7 +43,7 @@ template:
 automation:
   # Не логика, а учёт: LED загорается сам при включении кондиционера, а переключается только
   # ИК-командой toggle_led без обратной связи, поэтому его состояние держим в input_boolean.
-  # Гасит LED ночью "AC LED - Sleep" в packages/climate/heating_sleep.yaml.
+  # Гасит LED ночью "Semyon’s Bedroom AC" в packages/climate/semyons_bedroom_ac.yaml.
   - alias: "Semyon’s Bedroom AC LED"
     id: semyons_bedroom_ac_led_sync
     mode: restart
