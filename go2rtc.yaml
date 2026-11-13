@@ -12,6 +12,9 @@ streams:
   living_room_camera:
     - hass:Living Room Camera Hub
     - ffmpeg:living_room_camera#audio=aac#audio=opus
+  hikconnect_intercom_hikconnect_intercom_Q35439902_ch1:
+    - http://127.0.0.1:8123/api/hikconnect_intercom/stream/8lDx0-fbNK9gWOcqSMlhODZLo1VRkr-TQsoX0CTKu9U
+    - ffmpeg:hikconnect_intercom_hikconnect_intercom_Q35439902_ch1#audio=opus#query=log_level=debug
 
 # https://github.com/AlexxIT/go2rtc/tree/dev/internal/homekit
 homekit:
