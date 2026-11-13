@@ -107,7 +107,6 @@ homekit:
 
         # Switches
         - switch.semyons_bedroom_ac_led
-        - select.irynas_bedroom_air_purifier_screen_brightness
 
         # Heaters
         # - climate.irynas_bedroom_heater
@@ -253,8 +252,6 @@ homekit:
       # Switches
       switch.semyons_bedroom_ac_led:
         name: Semyon’s Bedroom AC
-      select.irynas_bedroom_air_purifier_screen_brightness:
-        name: Iryna’s Bedroom Air Purifier
 
   - name: HA Building Entrance
     port: 21065
