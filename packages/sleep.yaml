@@ -66,6 +66,13 @@ template:
       - trigger: state
         entity_id: person.semyon
         id: presence
+      # Окно отбоя открылось: если свет погасили ещё до 20:00, template-триггер "bed"
+      # уже отработал вне окна и сам не повторится - пересчитать (13.11: Ира легла в 19:57).
+      - trigger: state
+        entity_id: binary_sensor.bedtime_window
+        from: "off"
+        to: "on"
+        id: recheck
       # Рестарт HA / перезагрузка шаблонов: за простой теряются переходы окон (06:00, 11:00)
       # и отсчёты "for", а template-триггер "bed" не срабатывает, если уже true на старте.
       - trigger: homeassistant
@@ -165,6 +172,13 @@ template:
       - trigger: state
         entity_id: person.iryna
         id: presence
+      # Окно отбоя открылось: если свет погасили ещё до 20:00, template-триггер "bed"
+      # уже отработал вне окна и сам не повторится - пересчитать (13.11: Ира легла в 19:57).
+      - trigger: state
+        entity_id: binary_sensor.bedtime_window
+        from: "off"
+        to: "on"
+        id: recheck
     binary_sensor:
       - name: Iryna Asleep
         unique_id: iryna_asleep
