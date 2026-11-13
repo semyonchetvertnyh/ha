@@ -1628,3 +1628,44 @@
   - delay: 00:10:00
   max_exceeded: silent
   mode: single
+- id: '1794586163403'
+  alias: Intercom Hang Up
+  description: Сбрасывает звонок домофона после открытия двери подъезда
+  triggers:
+  - entity_id: lock.building_entrance
+    from: locked
+    to: unlocked
+    trigger: state
+  conditions:
+  - condition: state
+    entity_id: sensor.intercom_call_status
+    state:
+    - ringing
+    - call in progress
+  actions:
+  - delay:
+      seconds: 2
+  - action: button.press
+    target:
+      entity_id: button.intercom_hang_up_call
+  mode: single
+- id: '1794586204038'
+  alias: Notifications - Intercom
+  description: Уведомляет, если панель домофона пропала из сети
+  triggers:
+  - entity_id: binary_sensor.intercom_ping
+    for:
+      minutes: 5
+    to: 'off'
+    trigger: state
+  conditions: []
+  actions:
+  - action: script.notify
+    data:
+      announce: false
+      category: intercom
+      description: Панель домофона пропала из Wi-Fi, звонки до Apple Home не дойдут.
+        Перезагрузи её по питанию.
+      persons:
+      - person.semyon
+  mode: single
