@@ -8,7 +8,7 @@ homekit:
         - switch.water_heater
 
         # Security
-        - alarm_control_panel.home
+        # - alarm_control_panel.home
         - binary_sensor.entryway_door
         - binary_sensor.balcony_door
         - binary_sensor.laundry_door
@@ -124,9 +124,9 @@ homekit:
         linked_valve_end_time: sensor.water_heater_end_time
 
       # Security
-      alarm_control_panel.home:
-        name: Security
-        # code: !secret alarm_code
+      # alarm_control_panel.home:
+      #   name: Security
+      #   # code: !secret alarm_code
       binary_sensor.entryway_door:
         name: Entryway Door
         linked_battery_sensor: sensor.entryway_door_sensor_battery
