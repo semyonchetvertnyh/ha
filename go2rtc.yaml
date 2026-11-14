@@ -1,6 +1,8 @@
 streams:
-  building_entrance: http://127.0.0.1:8123/api/hikconnect_intercom/stream/KyZt05o-ET0ZT9u0h0FiGX0UmgZ9VYYxaSS_86umDTQ
-  # building_entrance: hass://supervisor?entity_id=camera.building_entrance
+  # URL потока домофона содержит токен, который меняется при каждом перезапуске HA.
+  # Актуальный URL отдаёт интеграция expose_camera_stream_source.
+  building_entrance:
+    - 'echo:curl -fsSL http://supervisor/core/api/camera_stream_source/camera.building_entrance -H "Authorization: Bearer ${SUPERVISOR_TOKEN}"'
 
   # entryway_doorbell:
   #   - hass:Entryway Doorbell

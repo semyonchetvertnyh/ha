@@ -275,6 +275,9 @@ homekit:
         video_codec: copy
         support_audio: false
         linked_doorbell_sensor: event.intercom_doorbell
+        # Поток берём из go2rtc: постоянный URL позволяет передать ffmpeg флаг -analyzeduration.
+        # Без него ffmpeg 5 секунд анализирует MPEG-TS, прежде чем отдать первый кадр.
+        stream_source: "-analyzeduration 200000 -rtsp_transport tcp -i rtsp://127.0.0.1:8554/building_entrance"
 
 template:
 
