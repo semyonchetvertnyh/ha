@@ -258,9 +258,9 @@ homekit:
     mode: accessory
     filter:
       include_entities:
-        - lock.building_entrance
+        - lock.homekit_building_entrance
     entity_config:
-      lock.building_entrance:
+      lock.homekit_building_entrance:
         name: Building Entrance
 
   - name: HA Intercom
@@ -307,3 +307,19 @@ template:
         speed_count: 3
         preset_modes:
           - Auto
+
+  # Обёртка без устройства: HomeKit Bridge сам привязывает event.intercom_doorbell к замку,
+  # если они на одном устройстве, и в Apple Home у замка появляется лишняя кнопка звонка.
+  - lock:
+      - name: "HomeKit: Building Entrance"
+        unique_id: homekit_building_entrance
+        state: "{{ states('lock.building_entrance') }}"
+        availability: "{{ has_value('lock.building_entrance') }}"
+        lock:
+          - action: lock.lock
+            target:
+              entity_id: lock.building_entrance
+        unlock:
+          - action: lock.unlock
+            target:
+              entity_id: lock.building_entrance

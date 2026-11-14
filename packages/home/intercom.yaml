@@ -1,4 +1,7 @@
 # Домофон (hikconnect_intercom): панель Intercom в прихожей, дверь подъезда - camera/lock.building_entrance.
+# Здесь всё, что связано с домофоном. Исключения:
+# - интеграция Ping (binary_sensor.intercom_ping) настраивается только через UI;
+# - экспорт в HomeKit (HA Intercom, HA Building Entrance, обёртка lock.homekit_building_entrance) - в packages/homekit.yaml.
 
 automation:
   - alias: "Intercom Ringtone"
@@ -25,3 +28,71 @@ automation:
           value: >
             {{ 0 if is_state('binary_sensor.semyon_asleep', 'on')
                   or is_state('binary_sensor.iryna_asleep', 'on') else 7 }}
+
+  - alias: "Intercom Stream Prewarm"
+    id: intercom_stream_prewarm
+    description: >
+      По звонку держит поток камеры домофона открытым на время max ring time панели,
+      чтобы видео в Apple Home открывалось сразу, а не с холодного старта (2 с против
+      нескольких мс). Запись - только способ удержать поток: файл перезаписывается
+      при каждом звонке.
+    mode: single
+    max_exceeded: silent
+    triggers:
+      - trigger: event.received
+        target:
+          entity_id: event.intercom_doorbell
+        options:
+          event_type:
+            - ring
+    actions:
+      - action: camera.record
+        target:
+          entity_id: camera.building_entrance
+        data:
+          filename: /media/intercom/last_ring.mp4
+          duration: "{{ states('sensor.intercom_max_ring_time') | int(60) }}"
+          lookback: 0
+
+  - alias: "Intercom Hang Up"
+    id: "1794586163403"
+    description: Сбрасывает звонок домофона после открытия двери подъезда
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: lock.building_entrance
+        from: locked
+        to: unlocked
+    conditions:
+      - condition: state
+        entity_id: sensor.intercom_call_status
+        state:
+          - ringing
+          - call in progress
+    actions:
+      - delay:
+          seconds: 2
+      - action: button.press
+        target:
+          entity_id: button.intercom_hang_up_call
+
+  - alias: "Notifications - Intercom"
+    id: "1794586204038"
+    description: Уведомляет, если панель домофона пропала из сети
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.intercom_ping
+        to: "off"
+        for:
+          minutes: 5
+    actions:
+      - action: script.notify
+        data:
+          announce: false
+          category: intercom
+          description: >-
+            Панель домофона пропала из Wi-Fi, звонки до Apple Home не дойдут.
+            Перезагрузи её по питанию.
+          persons:
+            - person.semyon
