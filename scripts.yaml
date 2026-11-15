@@ -2,7 +2,8 @@ notify:
   alias: Notify
   description: >-
     Sends a notification to residents: title is the category (ru for Semyon, ua for
-    Iryna), message is the description as is (description_ua for Iryna).
+    Iryna), message is the description rephrased by AI in Jarvis style (falls back
+    to description / description_ua as is if AI fails).
   fields:
     category:
       name: Category
@@ -78,6 +79,38 @@ notify:
       selector:
         boolean:
   sequence:
+  - alias: Текст в стиле Джарвиса
+    action: ai_task.generate_data
+    continue_on_error: true
+    data:
+      entity_id: ai_task.google_ai
+      task_name: Notification text
+      instructions: >-
+        Ты - J.A.R.V.I.S., ИИ умного дома. Перепиши уведомление в своём стиле:
+        вежливо, с лёгкой иронией, одна-две короткие фразы. Сохрани все факты,
+        числа и время, ничего не придумывай. Без markdown, эмодзи и ссылок.
+
+        - message_for_semyon: на русском, иногда обращайся "сэр".
+        - message_for_iryna: на украинском, иногда обращайся "міс".
+        - message_for_both: на русском, для озвучки на колонках, без обращения,
+          числа словами.
+
+        Уведомление: {{ description }}
+        {% if description_ua is defined and description_ua %}Украинский вариант: {{ description_ua }}{% endif %}
+      structure:
+        message_for_semyon:
+          required: true
+          selector:
+            text:
+        message_for_iryna:
+          required: true
+          selector:
+            text:
+        message_for_both:
+          required: true
+          selector:
+            text:
+    response_variable: notification
   - variables:
       categories:
         humidity: ['💧 Влажность', '💧 Вологість']
@@ -102,9 +135,10 @@ notify:
       titles: "{{ categories.get(category | default(''), ['🏠 Дом', '🏠 Дім']) }}"
       title_ru: "{{ titles[0] }}"
       title_ua: "{{ titles[1] }}"
-      message_semyon: "{{ description }}"
-      message_iryna: "{{ description_ua | default(description, true) }}"
-      message_both: "{{ description }}"
+      ai: "{{ notification.data if notification is defined and notification.data is mapping else {} }}"
+      message_semyon: "{{ ai.message_for_semyon | default(description, true) }}"
+      message_iryna: "{{ ai.message_for_iryna | default(description_ua | default(description, true), true) }}"
+      message_both: "{{ ai.message_for_both | default(description, true) }}"
   - parallel:
     - if:
       - condition: template
