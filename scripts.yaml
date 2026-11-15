@@ -164,17 +164,15 @@ notify:
       - condition: template
         value_template: '{{ announce | default(false) }}'
       - condition: state
-        entity_id: binary_sensor.semyon_asleep
-        state: 'off'
+        entity_id: person.semyon
+        state: home
       - condition: state
-        entity_id: binary_sensor.iryna_asleep
+        entity_id: binary_sensor.semyon_asleep
         state: 'off'
       then:
       - action: assist_satellite.announce
         target:
-          entity_id:
-          - assist_satellite.living_room_speakers
-          - assist_satellite.semyons_bedroom_speakers
+          entity_id: assist_satellite.semyons_bedroom
         data:
           message: "{{ message_both }}"
           preannounce: true
