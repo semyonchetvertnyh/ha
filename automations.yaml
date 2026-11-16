@@ -241,51 +241,6 @@
       announce: true
       category: dryer
   mode: single
-- id: '1760436204228'
-  alias: Notifications - Bathroom Humidity
-  description: ''
-  triggers:
-  - trigger: state
-    entity_id:
-    - binary_sensor.bathroom_humidity
-    from: 'off'
-    to: 'on'
-  conditions:
-  - condition: state
-    entity_id: binary_sensor.bathroom_window
-    state: 'off'
-  actions:
-  - action: script.notify
-    metadata: {}
-    data:
-      description: В ванной стало очень влажно. Откройте окно, чтобы проветрить.
-      persons:
-      - person.semyon
-      - person.iryna
-      category: humidity
-      description_ua: У ванній стало дуже волого. Відчиніть вікно, щоб провітрити.
-  - wait_for_trigger:
-    - trigger: state
-      entity_id:
-      - binary_sensor.bathroom_window
-      from: 'off'
-      to: 'on'
-    timeout:
-      hours: 1
-      minutes: 0
-      seconds: 0
-      milliseconds: 0
-    continue_on_timeout: false
-  - action: script.notify
-    metadata: {}
-    data:
-      description: Окно в ванной открыли, спасибо!
-      persons:
-      - person.semyon
-      - person.iryna
-      category: humidity
-      description_ua: Вікно у ванній відчинили, дякую!
-  mode: single
 - id: '1760453651233'
   alias: Entryway Lock
   description: Автозапирание - замок не заперт (unlocked или полу-заперт) и дверь
