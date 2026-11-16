@@ -805,20 +805,23 @@
   mode: single
 - id: '1765357730396'
   alias: Christmas
-  description: 'Гирлянды (scene.christmas): включает первый проснувшийся (residents_asleep
-    on -> off в утреннем окне) или восход +15 мин, выключает residents_asleep on (уснули
-    все). Кто-то ближе 1 км и едет к дому - вкл заранее; отъехал дальше 1 км, а дома
-    никого - выкл. Пустой дом - выкл, кто-то пришёл - вкл. При подъезде и приходе
-    не включает, если кто-то спит (semyon_asleep / iryna_asleep).'
+  description: 'Ёлка: включает первый проснувшийся (residents_asleep on -> off в утреннем
+    окне) или начало утреннего окна, если кто-то уже не спит; выключает residents_asleep
+    on (уснули все). Кто-то ближе 1 км и едет к дому - вкл заранее; отъехал дальше
+    1 км, а дома никого - выкл. Пустой дом - выкл, кто-то пришёл - вкл. При подъезде
+    и приходе не включает, если кто-то спит (semyon_asleep / iryna_asleep). Огни на
+    балконе повторяют за ёлкой, но только после заката: ёлка вкл и солнце село / закат
+    при горящей ёлке - вкл; восход или ёлка выкл - выкл.'
   triggers:
-  - event: sunrise
-    id: sunrise
-    offset: 00:15:00
-    trigger: sun
   - entity_id: binary_sensor.residents_asleep
     from: 'on'
     id: morning
     to: 'off'
+    trigger: state
+  - entity_id: binary_sensor.wakeup_window
+    from: 'off'
+    id: morning
+    to: 'on'
     trigger: state
   - entity_id: binary_sensor.residents_asleep
     id: night
@@ -827,6 +830,12 @@
     - unknown
     to: 'on'
     trigger: state
+  - event: sunset
+    id: sunset
+    trigger: sun
+  - event: sunrise
+    id: sunrise
+    trigger: sun
   - entity_id: zone.home
     id: residents
     trigger: state
@@ -838,30 +847,76 @@
     entity_id: sensor.home_nearest_distance
     id: left_area
     trigger: numeric_state
+  - entity_id: light.christmas_tree
+    id: tree_on
+    to: 'on'
+    trigger: state
+  - entity_id: light.christmas_tree
+    id: tree_off
+    to: 'off'
+    trigger: state
   conditions: []
   actions:
   - choose:
     - conditions:
       - condition: trigger
-        id:
-        - sunrise
-        - morning
-      - or:
-        - condition: trigger
-          id: sunrise
-        - condition: state
-          entity_id: binary_sensor.wakeup_window
-          state: 'on'
-      sequence:
+        id: morning
+      - condition: state
+        entity_id: binary_sensor.wakeup_window
+        state: 'on'
       - above: 0
         condition: numeric_state
         entity_id: zone.home
       - condition: state
         entity_id: binary_sensor.residents_asleep
         state: 'off'
-      - action: scene.turn_on
+      sequence:
+      - action: light.turn_on
         target:
-          entity_id: scene.christmas
+          entity_id: light.christmas_tree
+    - conditions:
+      - condition: trigger
+        id: night
+      sequence:
+      - action: light.turn_off
+        target:
+          entity_id:
+          - light.christmas_tree
+          - light.balcony_string_lights
+    - conditions:
+      - condition: trigger
+        id: sunset
+      - condition: state
+        entity_id: light.christmas_tree
+        state: 'on'
+      sequence:
+      - action: light.turn_on
+        target:
+          entity_id: light.balcony_string_lights
+    - conditions:
+      - condition: trigger
+        id: sunrise
+      sequence:
+      - action: light.turn_off
+        target:
+          entity_id: light.balcony_string_lights
+    - conditions:
+      - condition: trigger
+        id: tree_on
+      - condition: state
+        entity_id: sun.sun
+        state: below_horizon
+      sequence:
+      - action: light.turn_on
+        target:
+          entity_id: light.balcony_string_lights
+    - conditions:
+      - condition: trigger
+        id: tree_off
+      sequence:
+      - action: light.turn_off
+        target:
+          entity_id: light.balcony_string_lights
     - conditions:
       - condition: trigger
         id: approaching
@@ -874,9 +929,9 @@
         - binary_sensor.iryna_asleep
         state: 'off'
       sequence:
-      - action: scene.turn_on
+      - action: light.turn_on
         target:
-          entity_id: scene.christmas
+          entity_id: light.christmas_tree
     - conditions:
       - condition: trigger
         id: left_area
@@ -886,14 +941,9 @@
       sequence:
       - action: light.turn_off
         target:
-          entity_id: '{{ state_attr(''scene.christmas'', ''entity_id'') }}'
-    - conditions:
-      - condition: trigger
-        id: night
-      sequence:
-      - action: light.turn_off
-        target:
-          entity_id: '{{ state_attr(''scene.christmas'', ''entity_id'') }}'
+          entity_id:
+          - light.christmas_tree
+          - light.balcony_string_lights
     - conditions:
       - condition: trigger
         id: residents
@@ -901,7 +951,9 @@
       - else:
         - action: light.turn_off
           target:
-            entity_id: '{{ state_attr(''scene.christmas'', ''entity_id'') }}'
+            entity_id:
+            - light.christmas_tree
+            - light.balcony_string_lights
         if:
         - above: 0
           condition: numeric_state
@@ -914,10 +966,10 @@
             - binary_sensor.iryna_asleep
             state: 'off'
           then:
-          - action: scene.turn_on
+          - action: light.turn_on
             target:
-              entity_id: scene.christmas
-  mode: single
+              entity_id: light.christmas_tree
+  mode: queued
 - id: '1767120628276'
   alias: 'Heating: Geofencing-based'
   description: Heating - Geofencing (Proximity + Zone)
