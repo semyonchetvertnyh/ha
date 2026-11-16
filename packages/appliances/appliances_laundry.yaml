@@ -20,6 +20,22 @@ timer:
     icon: mdi:tumble-dryer
     restore: true
 
+template:
+  - sensor:
+      - name: Washer End Time
+        unique_id: washer_end_time
+        device_class: timestamp
+        icon: mdi:washing-machine
+        state: "{{ state_attr('timer.washer', 'finishes_at') }}"
+        availability: "{{ is_state('timer.washer', 'active') }}"
+
+      - name: Dryer End Time
+        unique_id: dryer_end_time
+        device_class: timestamp
+        icon: mdi:tumble-dryer
+        state: "{{ state_attr('timer.dryer', 'finishes_at') }}"
+        availability: "{{ is_state('timer.dryer', 'active') }}"
+
 automation:
   - alias: Timer - Washer
     id: washer_timer

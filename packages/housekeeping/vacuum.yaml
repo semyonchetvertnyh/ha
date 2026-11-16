@@ -9,6 +9,15 @@ timer:
     icon: mdi:robot-vacuum
     restore: true
 
+template:
+  - sensor:
+      - name: Vacuum End Time
+        unique_id: vacuum_end_time
+        device_class: timestamp
+        icon: mdi:robot-vacuum
+        state: "{{ state_attr('timer.vacuum', 'finishes_at') }}"
+        availability: "{{ is_state('timer.vacuum', 'active') }}"
+
 automation:
   - alias: Vacuum
     id: vacuum
