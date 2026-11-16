@@ -74,30 +74,27 @@ automation:
         target:
           entity_id: switch.water_heater
 
+  # Аварийный таймер на реле: старт/отмена вместе с реле, длительность из
+  # input_number.water_heater_duration, по окончании выключает реле, сверка после рестарта HA.
+  - alias: Timer - Water Heater
+    id: water_heater_timer
+    use_blueprint:
+      path: semyonchetvertnyh/timer_sync_to_switch.yaml
+      input:
+        timer: timer.water_heater
+        switch: switch.water_heater
+        duration: input_number.water_heater_duration
+        turn_off_when_timer_finished: true
+
   - alias: Water Heater
     id: water_heater_auto_off
     description: >-
       Выключает бойлер, когда вода горячая: термостат отключил ТЭН или ТЭН не
-      начал греть за 2 минуты после включения. Аварийный предел -
-      timer.water_heater на input_number.water_heater_duration (2 часа),
-      таймер синхронизирован с реле.
+      начал греть за 2 минуты после включения. Аварийный предел (таймер) -
+      в "Timer - Water Heater".
     mode: queued
     max: 10
     triggers:
-      - trigger: state
-        entity_id: switch.water_heater
-        to: "on"
-        not_from:
-          - unknown
-          - unavailable
-        id: switch_on
-      - trigger: state
-        entity_id: switch.water_heater
-        to: "off"
-        not_from:
-          - unknown
-          - unavailable
-        id: switch_off
       - trigger: state
         entity_id: binary_sensor.water_heater_heating
         from: "on"
@@ -112,34 +109,14 @@ automation:
         for:
           minutes: 2
         id: not_heating
-      - trigger: state
-        entity_id: input_number.water_heater_duration
-        not_from:
-          - unknown
-          - unavailable
-        not_to:
-          - unknown
-          - unavailable
-        id: duration_changed
-      - trigger: event
-        event_type: timer.finished
-        event_data:
-          entity_id: timer.water_heater
-        id: timer_finished
-      - trigger: event
-        event_type: timer.cancelled
-        event_data:
-          entity_id: timer.water_heater
-        id: timer_cancelled
-      # Рестарт HA теряет: переход "ТЭН перестал греть" (сенсор приходит из unavailable),
-      # отсчёт "2 минуты не греет" и timer.finished, если таймер истёк во время простоя
-      # (событие летит при восстановлении таймера, когда автоматизации ещё не слушают).
+      # Рестарт HA теряет переход "ТЭН перестал греть" (сенсор приходит из unavailable)
+      # и отсчёт "2 минуты не греет".
       - trigger: homeassistant
         event: start
         id: start
     actions:
       - choose:
-          - alias: Рестарт HA - сверить реле, таймер и нагрев
+          - alias: Рестарт HA - проверить, греет ли ТЭН
             conditions:
               - condition: trigger
                 id: start
@@ -149,73 +126,20 @@ automation:
                      and has_value('binary_sensor.water_heater_heating') }}
                 timeout: "00:02:00"
                 continue_on_timeout: false
+              - condition: state
+                entity_id: switch.water_heater
+                state: "on"
+              # термостат делает паузы до ~20 с, поэтому ждём, не начнёт ли ТЭН греть
+              - wait_template: "{{ is_state('binary_sensor.water_heater_heating', 'on') }}"
+                timeout: "00:00:30"
               - if:
                   - condition: state
-                    entity_id: switch.water_heater
-                    state: "on"
+                    entity_id: binary_sensor.water_heater_heating
+                    state: "off"
                 then:
-                  - if:
-                      - condition: state
-                        entity_id: timer.water_heater
-                        state: idle
-                    then:
-                      - action: timer.start
-                        target:
-                          entity_id: timer.water_heater
-                        data:
-                          duration: "{{ states('input_number.water_heater_duration') | int(7200) }}"
-                  # термостат делает паузы до ~20 с, поэтому ждём, не начнёт ли ТЭН греть
-                  - wait_template: "{{ is_state('binary_sensor.water_heater_heating', 'on') }}"
-                    timeout: "00:00:30"
-                  - if:
-                      - condition: state
-                        entity_id: binary_sensor.water_heater_heating
-                        state: "off"
-                    then:
-                      - action: switch.turn_off
-                        target:
-                          entity_id: switch.water_heater
-                else:
-                  - if:
-                      - condition: state
-                        entity_id: timer.water_heater
-                        state:
-                          - active
-                          - paused
-                    then:
-                      - action: timer.cancel
-                        target:
-                          entity_id: timer.water_heater
-
-          - alias: Реле включили - запустить аварийный таймер
-            conditions:
-              - condition: trigger
-                id: switch_on
-              - condition: state
-                entity_id: timer.water_heater
-                state:
-                  - idle
-                  - paused
-            sequence:
-              - action: timer.start
-                target:
-                  entity_id: timer.water_heater
-                data:
-                  duration: "{{ states('input_number.water_heater_duration') | int(7200) }}"
-
-          - alias: Реле выключили - остановить таймер
-            conditions:
-              - condition: trigger
-                id: switch_off
-              - condition: state
-                entity_id: timer.water_heater
-                state:
-                  - active
-                  - paused
-            sequence:
-              - action: timer.cancel
-                target:
-                  entity_id: timer.water_heater
+                  - action: switch.turn_off
+                    target:
+                      entity_id: switch.water_heater
 
           - alias: Вода горячая - выключить нагрев
             conditions:
@@ -232,48 +156,6 @@ automation:
                       - condition: state
                         entity_id: binary_sensor.water_heater_heating
                         state: "off"
-              - condition: state
-                entity_id: switch.water_heater
-                state: "on"
-            sequence:
-              - action: switch.turn_off
-                target:
-                  entity_id: switch.water_heater
-
-          - alias: Изменили длительность во время нагрева - пересчитать таймер
-            conditions:
-              - condition: trigger
-                id: duration_changed
-              - condition: state
-                entity_id: timer.water_heater
-                state: active
-            sequence:
-              - variables:
-                  remaining: >-
-                    {{ (as_timestamp(state_attr('timer.water_heater', 'finishes_at'))
-                        - trigger.from_state.state | float(0)
-                        + trigger.to_state.state | float(0)
-                        - as_timestamp(now())) | int(0) }}
-              - if:
-                  - condition: template
-                    value_template: "{{ remaining > 0 }}"
-                then:
-                  - action: timer.start
-                    target:
-                      entity_id: timer.water_heater
-                    data:
-                      duration: "{{ remaining }}"
-                else:
-                  - action: timer.finish
-                    target:
-                      entity_id: timer.water_heater
-
-          - alias: Таймер вышел или его отменили - выключить нагрев
-            conditions:
-              - condition: trigger
-                id:
-                  - timer_finished
-                  - timer_cancelled
               - condition: state
                 entity_id: switch.water_heater
                 state: "on"

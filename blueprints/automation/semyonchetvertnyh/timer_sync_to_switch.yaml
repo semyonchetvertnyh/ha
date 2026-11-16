@@ -4,7 +4,9 @@ blueprint:
     Synchronize a switch state with a timer. When the switch turns on, the timer starts.
     When the timer finishes, the switch can automatically turn off if enabled.
     Optionally takes the duration from an input_number (seconds) and recalculates
-    the running timer when it changes.
+    the running timer when it changes. After a Home Assistant restart the timer is
+    reconciled with the switch: started if the switch is on and the timer is idle,
+    cancelled if the switch is off and the timer is still running.
   domain: automation
   author: Semyon Chetvertnyh
   input:
@@ -42,6 +44,7 @@ max_exceeded: silent
 
 variables:
   timer_entity: !input timer
+  switch_entity: !input switch
   duration_entity: !input duration
   turn_off_when_timer_finished: !input turn_off_when_timer_finished
 
@@ -87,8 +90,58 @@ triggers:
       entity_id: !input duration
     id: dur_changed
 
+  # Рестарт HA: реле могло переключиться во время простоя, а timer.finished,
+  # если таймер истёк во время простоя, летит при восстановлении таймера,
+  # когда автоматизации ещё не слушают.
+  - platform: homeassistant
+    event: start
+    id: ha_start
+
 actions:
   - choose:
+
+      # Рестарт HA -> сверить таймер с реле
+      - conditions:
+          - condition: trigger
+            id: ha_start
+        sequence:
+          - wait_template: "{{ has_value(switch_entity) }}"
+            timeout: "00:02:00"
+            continue_on_timeout: false
+          - if:
+              - condition: state
+                entity_id: !input switch
+                state: "on"
+              - condition: state
+                entity_id: !input timer
+                state: "idle"
+            then:
+              - if:
+                  - condition: template
+                    value_template: "{{ duration_entity != '' and states(duration_entity) | is_number }}"
+                then:
+                  - service: timer.start
+                    target:
+                      entity_id: !input timer
+                    data:
+                      duration: "{{ states(duration_entity) | int }}"
+                else:
+                  - service: timer.start
+                    target:
+                      entity_id: !input timer
+          - if:
+              - condition: state
+                entity_id: !input switch
+                state: "off"
+              - condition: state
+                entity_id: !input timer
+                state:
+                  - "active"
+                  - "paused"
+            then:
+              - service: timer.cancel
+                target:
+                  entity_id: !input timer
 
       # Switch включён -> старт таймера
       - conditions:
