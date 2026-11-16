@@ -2,41 +2,19 @@
 # Здесь всё, что связано с домофоном. Исключения:
 # - интеграция Ping (binary_sensor.intercom_ping) настраивается только через UI;
 # - экспорт в HomeKit (HA Intercom, HA Building Entrance, обёртка lock.homekit_building_entrance) - в packages/homekit.yaml.
+# Звонок панели выключен (number.intercom_ringtone_volume = 0) - вручную, автоматизации на это нет.
 
 automation:
-  - alias: "Intercom Ringtone"
-    id: intercom_ringtone
+  # Вся логика домофона - одна автоматизация (объединены "Intercom Stream Prewarm" и "Intercom Hang Up").
+  # mode: parallel - чтобы сброс звонка не ждал окончания прогрева потока (он длится max ring time).
+  - alias: "Intercom"
+    id: intercom
     description: >
-      Звонок панели молчит, пока спит хоть кто-то (semyon_asleep / iryna_asleep),
-      и возвращается на 7, когда не спит никто. Событие ring в HA и звонок
-      в Hik-Connect при этом остаются. Пока выключена.
-    mode: restart
-    triggers:
-      - trigger: state
-        entity_id:
-          - binary_sensor.semyon_asleep
-          - binary_sensor.iryna_asleep
-        not_from: [unavailable, unknown]
-        not_to: [unavailable, unknown]
-      - trigger: homeassistant
-        event: start
-    actions:
-      - action: number.set_value
-        target:
-          entity_id: number.intercom_ringtone_volume
-        data:
-          value: >
-            {{ 0 if is_state('binary_sensor.semyon_asleep', 'on')
-                  or is_state('binary_sensor.iryna_asleep', 'on') else 7 }}
-
-  - alias: "Intercom Stream Prewarm"
-    id: intercom_stream_prewarm
-    description: >
-      По звонку держит поток камеры домофона открытым на время max ring time панели,
-      чтобы видео в Apple Home открывалось сразу, а не с холодного старта (2 с против
-      нескольких мс). Запись - только способ удержать поток: файл перезаписывается
-      при каждом звонке.
-    mode: single
+      Stream Prewarm: по звонку держит поток камеры домофона открытым на время max ring time
+      панели, чтобы видео в Apple Home открывалось сразу, а не с холодного старта. Запись -
+      только способ удержать поток: файл перезаписывается при каждом звонке.
+      Hang Up: сбрасывает звонок домофона после открытия двери подъезда.
+    mode: parallel
     max_exceeded: silent
     triggers:
       - trigger: event.received
@@ -45,36 +23,39 @@ automation:
         options:
           event_type:
             - ring
-    actions:
-      - action: camera.record
-        target:
-          entity_id: camera.building_entrance
-        data:
-          filename: /media/intercom/last_ring.mp4
-          duration: "{{ states('sensor.intercom_max_ring_time') | int(60) }}"
-          lookback: 0
-
-  - alias: "Intercom Hang Up"
-    id: "1794586163403"
-    description: Сбрасывает звонок домофона после открытия двери подъезда
-    mode: single
-    triggers:
+        id: ring
       - trigger: state
         entity_id: lock.building_entrance
         from: locked
         to: unlocked
-    conditions:
-      - condition: state
-        entity_id: sensor.intercom_call_status
-        state:
-          - ringing
-          - call in progress
+        id: door_opened
     actions:
-      - delay:
-          seconds: 2
-      - action: button.press
-        target:
-          entity_id: button.intercom_hang_up_call
+      - choose:
+          - conditions:
+              - condition: trigger
+                id: ring
+            sequence:
+              - action: camera.record
+                target:
+                  entity_id: camera.building_entrance
+                data:
+                  filename: /media/intercom/last_ring.mp4
+                  duration: "{{ states('sensor.intercom_max_ring_time') | int(60) }}"
+                  lookback: 0
+          - conditions:
+              - condition: trigger
+                id: door_opened
+              - condition: state
+                entity_id: sensor.intercom_call_status
+                state:
+                  - ringing
+                  - call in progress
+            sequence:
+              - delay:
+                  seconds: 2
+              - action: button.press
+                target:
+                  entity_id: button.intercom_hang_up_call
 
   - alias: "Notifications - Intercom"
     id: "1794586204038"
