@@ -19,7 +19,7 @@ automation:
         to: null # Any state (ignoring attribute changes)
         id: physical_changed
 
-      # Полу-заперт: Tedee в unknown + semi_locked on. Мимолетный semi_locked
+      # Полу-заперт: Tedee в unknown/jammed + semi_locked on. Мимолетный semi_locked
       # при переходах (~0.4 с) отсекаем задержкой
       - trigger: state
         entity_id: binary_sensor.entryway_lock_semi_locked
@@ -45,10 +45,12 @@ automation:
         id: homekey_tap
 
     variables:
-      # unknown + semi_locked = полу-заперт, считаем отдельным стабильным состоянием
+      # unknown/jammed + semi_locked = полу-заперт, считаем отдельным стабильным состоянием.
+      # jammed + semi_locked Tedee отдает, когда разблокировка остановилась на полпути -
+      # в HomeKit это не Jammed, а не заперт. Jammed - только без semi_locked
       physical: >-
         {% set s = states('lock.entryway') | lower %}
-        {{ 'semi_locked' if s == 'unknown' and is_state('binary_sensor.entryway_lock_semi_locked', 'on') else s }}
+        {{ 'semi_locked' if s in ['unknown', 'jammed'] and is_state('binary_sensor.entryway_lock_semi_locked', 'on') else s }}
       # Tedee менялся меньше 3 сек назад - значит пришло эхо нашей же синхронизации,
       # тап, который уже обрабатывается, или старт HA с retained-сообщением
       physical_settled: >-
