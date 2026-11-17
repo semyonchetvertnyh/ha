@@ -27,24 +27,19 @@ binary_sensor:
 
 template:
   # Семён
-  # Лёг: весь свет в спальне (включая подсветку монитора) выключен, за столом никого,
-  #   а он в спальне - 5 минут подряд, в вечернем окне.
-  # Не спит: сидит за столом 15 минут (работает ночью) - в любое время.
-  #   15 минут, потому что датчик стола ночью ложно видит кого-то на 3-10 минут (25.10, 27.10, 30.10).
+  # Лёг: весь свет в спальне (включая подсветку монитора) выключен, а он в спальне -
+  #   5 минут подряд, в вечернем окне. Подсветку монитора включает "Lights - Desk", когда он
+  #   садится за стол, - она и не даёт посчитать спящим, пока сидит за столом.
+  # Датчик стола (desk_occupancy) убран 17.11: ночью он ложно видит кого-то по 15-17 минут
+  #   и сбрасывал сон (17.11 в 04:04 и 05:07), а ночью Семён практически не работает.
   # Встал: открыл штору в спальне, в утреннем окне.
   #   Кофеварку убрали 31.10: её может включить кто угодно (гости), пока Семён спит.
-  # Страховка 06:00 не срабатывает, если он в этот момент за столом или в спальне горит свет.
+  # Страховка 06:00 не срабатывает, если в спальне горит свет или подсветка монитора.
   - triggers:
-      - trigger: state
-        entity_id: binary_sensor.desk_occupancy
-        to: "on"
-        for: "00:15:00"
-        id: desk
       - trigger: template
         value_template: >
           {{ is_state('light.semyons_bedroom', 'off')
              and is_state('light.desk_monitor_bar', 'off')
-             and is_state('binary_sensor.desk_occupancy', 'off')
              and is_state('binary_sensor.semyons_bedroom_occupancy', 'on') }}
         for: "00:05:00"
         id: bed
@@ -91,7 +86,6 @@ template:
           {% elif trigger.id == 'recheck' %}
             {% set dark = is_state('light.semyons_bedroom', 'off')
                           and is_state('light.desk_monitor_bar', 'off')
-                          and is_state('binary_sensor.desk_occupancy', 'off')
                           and is_state('binary_sensor.semyons_bedroom_occupancy', 'on') %}
             {% if bed %}
               {{ was or dark }}
@@ -104,11 +98,8 @@ template:
             {{ bed or was }}
           {% elif trigger.id == 'up' %}
             {{ was and not wake }}
-          {% elif trigger.id == 'desk' %}
-            false
           {% elif trigger.id == 'bed_fallback' %}
-            {{ was or not (is_state('binary_sensor.desk_occupancy', 'on')
-                           or is_state('light.desk_monitor_bar', 'on')
+            {{ was or not (is_state('light.desk_monitor_bar', 'on')
                            or is_state('light.semyons_bedroom', 'on')) }}
           {% elif trigger.id == 'up_fallback' %}
             false
