@@ -2,8 +2,9 @@ automation:
   # Синк Tedee (lock.entryway) <-> HomeKey-ESP32 (v0.9) через MQTT.
   # На ридере должны быть включены: Always Unlock on HomeKey (тап никогда не запирает,
   # эха "1" на тап нет), SmartLock Battery Reporting; Dummy Mode (Dumb Switch) - включен.
-  - alias: Entryway Lock - Apple HomeKey Reader
-    id: entryway_lock_apple_homekey_reader
+  # Брелоки Hikvision DS-K7M102-M (MIFARE Classic 1K) ридер отдает как теги HA
+  - alias: Entryway Lock Reader
+    id: entryway_lock_reader
     # без delay/wait прогоны занимают миллисекунды; queued, чтобы не терять события
     mode: queued
     max: 10
@@ -37,12 +38,20 @@ automation:
         topic: entryway_lock_homekey/homekit/state
         id: homekey_command
 
-      # Тап HomeKey (телефон/часы). Обычные NFC-метки (homekey: false) игнорируем
+      # Тап HomeKey (телефон/часы). Обычные NFC-метки (homekey: false) - через триггер tag ниже
       - trigger: mqtt
         topic: entryway_lock_homekey/homekey/auth
         value_template: "{{ value_json.homekey | default(false) }}"
         payload: "True"
         id: homekey_tap
+
+      # Брелоки MIFARE (UID без криптографии, клонируются)
+      - trigger: tag
+        tag_id:
+          - B31A8944 # Semyon's Keyfob
+          - 338C9C45 # Iryna's Keyfob
+          - 0D6C9ACE # Spare Keyfob
+        id: keyfob_tap
 
     variables:
       # unknown/jammed + semi_locked = полу-заперт, считаем отдельным стабильным состоянием.
@@ -148,6 +157,21 @@ automation:
             conditions: >-
               {{ trigger.id == 'homekey_tap'
                  and physical in ['unlocked', 'open', 'semi_locked']
+                 and physical_settled }}
+            sequence:
+              - action: lock.open
+                target:
+                  entity_id: lock.entryway
+
+          # =========================
+          # БРЕЛОК -> OPEN
+          # =========================
+          # Ридер на брелок свой state не меняет - просто открываем Tedee,
+          # HomeKit подтянется через physical_changed
+          - alias: Keyfob tap -> open
+            conditions: >-
+              {{ trigger.id == 'keyfob_tap'
+                 and physical in ['locked', 'unlocked', 'open', 'semi_locked']
                  and physical_settled }}
             sequence:
               - action: lock.open
