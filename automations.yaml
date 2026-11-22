@@ -194,6 +194,7 @@
       - person.semyon
       announce: true
       category: washer
+      description_ua: Прання завершує цикл прання. Можна перекладати білизну в сушарку.
   mode: single
 - id: '1760424916554'
   alias: Notifications - Dishwasher

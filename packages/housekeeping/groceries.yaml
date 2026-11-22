@@ -1,0 +1,114 @@
+rest_command:
+  norish_groceries:
+    url: "https://recipes.chetvertnyh.family/api/v1/groceries"
+    method: get
+    headers:
+      x-api-key: !secret norish_api_key
+      Accept: application/json
+
+  norish_grocery_delete:
+    url: "https://recipes.chetvertnyh.family/api/v1/groceries/{{ id }}?version={{ version }}"
+    method: delete
+    headers:
+      x-api-key: !secret norish_api_key
+
+automation:
+  - alias: Groceries
+    id: groceries
+    description: >-
+      Переносит список покупок Norish (recipes.chetvertnyh.family) в Reminders Groceries
+      и удаляет перенесённые пункты из Norish.
+    mode: single
+    max_exceeded: silent
+    triggers:
+      - trigger: time_pattern
+        minutes: /1
+    variables:
+      units:
+        gram: г
+        kilogram: кг
+        milliliter: мл
+        liter: л
+        teaspoon: ч. л.
+        heaping_teaspoon: ч. л.
+        tablespoon: ст. л.
+        clove: зубч.
+        bunch: пуч.
+        sprig: веточ.
+        slice: ломт.
+        piece: шт.
+        can: банк.
+        pack: уп.
+        handful: горст.
+        pinch: щеп.
+        leaf: лист.
+        stalk: стеб.
+        cup: стак.
+    actions:
+      - action: rest_command.norish_groceries
+        response_variable: norish
+      - variables:
+          items: >
+            {% set c = norish.content if norish.status == 200 else [] %}
+            {% set c = c.groceries if c is mapping else c %}
+            {{ c | rejectattr('isDone') | list }}
+      - condition: template
+        value_template: "{{ items | count > 0 }}"
+
+      # Перевод на английский через Gemini - пока выключен, пункты идут на русском.
+      # - action: ai_task.generate_data
+      #   data:
+      #     task_name: Norish groceries to English
+      #     entity_id: ai_task.google_ai
+      #     instructions: >-
+      #       Translate these shopping list items into English, as they would be
+      #       written on a grocery list in a Cyprus/UK supermarket.
+      #       Return ONLY a JSON array in the same order, one object per item:
+      #       {"item": "Coconut milk", "note": "200 ml"}.
+      #       item - product name, first letter capitalized, no amounts.
+      #       note - amount with a short English unit (g, kg, ml, l, tbsp, tsp,
+      #       pcs, bunch...), or "" if there is no amount.
+      #       Items: {{ items | map(attribute='name') | list | to_json }}
+      #       Amounts: {{ items | map(attribute='amount') | list | to_json }}
+      #       Units: {{ items | map(attribute='unit') | list | to_json }}
+      #   response_variable: ai
+      # - variables:
+      #     translated: >
+      #       {{ ai.data | regex_replace('(?s)^```(json)?|```$', '') | trim | from_json }}
+
+      - action: todo.get_items
+        target:
+          entity_id: todo.groceries
+        data:
+          status: needs_action
+        response_variable: current
+      - variables:
+          existing: >
+            {{ current['todo.groceries']['items'] | map(attribute='summary')
+               | map('lower') | list }}
+
+      - repeat:
+          for_each: "{{ items }}"
+          sequence:
+            - variables:
+                title: "{{ repeat.item.name[:1] | upper ~ repeat.item.name[1:] }}"
+                note: >
+                  {% set a = repeat.item.amount %}
+                  {% if a is number %}
+                    {% set a = (a | round(2) | string) | regex_replace('\.0+$', '') %}
+                    {{ (a ~ ' ' ~ units.get(repeat.item.unit, repeat.item.unit or '')) | trim }}
+                  {% endif %}
+            - if:
+                - condition: template
+                  value_template: "{{ (title | lower) not in existing }}"
+              then:
+                - action: todo.add_item
+                  target:
+                    entity_id: todo.groceries
+                  data:
+                    item: "{{ title }}"
+                    description: "{{ note | trim }}"
+            - action: rest_command.norish_grocery_delete
+              data:
+                id: "{{ repeat.item.id }}"
+                version: "{{ repeat.item.version }}"

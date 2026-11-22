@@ -4,6 +4,8 @@ notify:
     Sends a notification to residents: title is the category (ru for Semyon, ua for
     Iryna), message is the description rephrased by AI in Jarvis style (falls back
     to description / description_ua as is if AI fails).
+  mode: queued
+  max: 10
   fields:
     category:
       name: Category
