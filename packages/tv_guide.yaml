@@ -20,6 +20,14 @@ rest:
           - min_hours_ahead
           - channels
           - channels_under_48h
+      # передачи без постера (список - http://nas.local:9192/missing); без уведомления
+      - name: "TV Guide No Poster"
+        unique_id: tv_guide_no_poster
+        icon: mdi:image-off-outline
+        value_template: "{{ value_json.no_poster }}"
+        state_class: measurement
+        json_attributes:
+          - no_poster_airings
 
 automation:
   - alias: "Notifications - TV Guide"
