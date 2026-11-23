@@ -1,7 +1,7 @@
 # Телепрограмма для Plex: гид собирает сервис epg на NAS (стек media) из Dispatcharr.
 # /status отдаёт, на сколько часов вперёд есть программа (медиана по каналам).
-# Если Dispatcharr перестал обновлять гид от ottclub.tv, запас падает - предупреждаем
-# заранее, пока в Plex не появилось "Unknown Airing".
+# ottclub.tv обновляет гид раз в неделю, поэтому предупреждаем не по запасу, а если
+# обновление опоздало (source_updated_at из /status) - пока в Plex не появилось "Unknown Airing".
 
 rest:
   - resource: https://tv.chetvertnyh.space/status
@@ -20,6 +20,15 @@ rest:
           - min_hours_ahead
           - channels
           - channels_under_48h
+      # когда источник (ottclub.tv) последний раз продлевал программу
+      - name: "TV Guide Source Updated"
+        unique_id: tv_guide_source_updated
+        icon: mdi:calendar-sync
+        device_class: timestamp
+        value_template: "{{ value_json.source_updated_at }}"
+        json_attributes:
+          - source_updates
+          - source_update_every_h
       # передачи без постера (список - http://nas.local:9192/missing); без уведомления
       - name: "TV Guide No Poster"
         unique_id: tv_guide_no_poster
@@ -34,9 +43,13 @@ automation:
     id: notifications_tv_guide
     mode: single
     triggers:
-      - trigger: numeric_state
-        entity_id: sensor.tv_guide_hours_ahead
-        below: 48
+      # ottclub обновляет гид раз в неделю (в понедельник, на неделю вперёд),
+      # поэтому запас меньше 48 ч на выходных - норма; тревога - если
+      # обновления нет 7,5 суток
+      - trigger: time
+        at:
+          entity_id: sensor.tv_guide_source_updated
+          offset: "180:00:00"
     actions:
       - action: script.notify
         data:
@@ -45,6 +58,7 @@ automation:
           announce: false
           category: tv_guide
           description: >-
-            Телепрограмма для Plex заканчивается: осталось около
+            Гид ottclub.tv не обновлялся с
+            {{ as_timestamp(states('sensor.tv_guide_source_updated')) | timestamp_custom('%d.%m %H:%M') }}
+            (обычно раз в неделю). Программы в Plex осталось около
             {{ states('sensor.tv_guide_hours_ahead') | float(0) | round(0) }} часов.
-            Похоже, Dispatcharr перестал обновлять гид от ottclub.tv.
