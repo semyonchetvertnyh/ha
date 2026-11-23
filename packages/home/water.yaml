@@ -40,7 +40,7 @@ automation:
   - alias: Water Heating
     id: "1762005091052"
     description: >-
-      Утром в пасмурную или дождливую прохладную погоду включает нагрев воды.
+      Утром в прохладную погоду включает нагрев воды.
       Выключается нагрев сам - автоматизацией "Water Heater".
     mode: single
     triggers:
@@ -48,23 +48,6 @@ automation:
         event: sunrise
         offset: "00:15:00"
     conditions:
-      - condition: or
-        conditions:
-          - alias: Облачно
-            condition: numeric_state
-            entity_id: weather.forecast_home
-            attribute: cloud_coverage
-            above: 15
-          - alias: Осадки
-            condition: state
-            entity_id: weather.forecast_home
-            state:
-              - rainy
-              - pouring
-              - lightning-rainy
-              - snowy-rainy
-              - snowy
-              - hail
       - condition: numeric_state
         entity_id: weather.forecast_home
         attribute: temperature
