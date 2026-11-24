@@ -99,6 +99,8 @@ homekit:
         - light.desk_lamp
         - light.semyons_bedroom_bed_end_lamp
         - light.semyons_bedroom_bed_end_bar
+        - light.semyons_bedroom_bedside_lamp_front
+        - light.semyons_bedroom_bedside_lamp_back
         - light.desk_monitor_bar
         - light.bathroom
         - light.balcony_downlight
@@ -232,8 +234,10 @@ homekit:
         name: Semyon’s Bedroom Ceiling Light
       light.desk_lamp:
         name: Semyon’s Bedroom Desk Lamp
-      light.semyons_bedside_glow:
-        name: Semyon’s Bedroom Bedside Glow
+      light.semyons_bedroom_bedside_lamp_front:
+        name: Semyon’s Bedroom Bedside Lamp Front
+      light.semyons_bedroom_bedside_lamp_back:
+        name: Semyon’s Bedroom Bedside Lamp Back
       light.desk_monitor_bar:
         name: Semyon’s Bedroom Desk Bar
 
