@@ -54,7 +54,6 @@ homekit:
 
         # Temperature
         # - sensor.living_room_temperature
-        - sensor.irynas_bedroom_temperature
         - sensor.bathroom_temperature
 
         # Humidity
