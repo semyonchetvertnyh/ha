@@ -149,37 +149,26 @@ automation:
                       retain: true
 
           # =========================
-          # HOMEKEY TAP, ДВЕРЬ НЕ ЗАПЕРТА -> OPEN
+          # HOMEKEY TAP / БРЕЛОК -> OPEN
           # =========================
-          # С Always Unlock ридер на тап в unlocked ничего не публикует в state,
-          # приходит только auth. Тап по запертой двери обработает ветка ниже (cmd 0)
-          - alias: HomeKey tap while unlocked -> open
+          # Тап - всегда реальное действие (эха у auth и tag нет), поэтому без physical_settled:
+          # иначе сразу после автозакрытия (locking ~10 с + 3 с) тап игнорировался.
+          # Тап по запертой двери тоже открываем здесь; дубль от cmd 0 отсекает
+          # ожидание смены состояния ниже (следующий прогон увидит unlocking).
+          # Ридер на брелок свой state не меняет - HomeKit подтянется через physical_changed
+          - alias: HomeKey / keyfob tap -> open
             conditions: >-
-              {{ trigger.id == 'homekey_tap'
-                 and physical in ['unlocked', 'open', 'semi_locked']
-                 and physical_settled }}
+              {{ trigger.id in ['homekey_tap', 'keyfob_tap']
+                 and physical in ['locked', 'locking', 'unlocked', 'open', 'semi_locked'] }}
             sequence:
               - action: lock.open
                 target:
                   entity_id: lock.entryway
+              - wait_template: "{{ not is_state('lock.entryway', physical) }}"
+                timeout: "00:00:05"
 
           # =========================
-          # БРЕЛОК -> OPEN
-          # =========================
-          # Ридер на брелок свой state не меняет - просто открываем Tedee,
-          # HomeKit подтянется через physical_changed
-          - alias: Keyfob tap -> open
-            conditions: >-
-              {{ trigger.id == 'keyfob_tap'
-                 and physical in ['locked', 'unlocked', 'open', 'semi_locked']
-                 and physical_settled }}
-            sequence:
-              - action: lock.open
-                target:
-                  entity_id: lock.entryway
-
-          # =========================
-          # HOMEKEY -> PHYSICAL (Home app, Siri, тап по запертой двери)
+          # HOMEKEY -> PHYSICAL (Home app, Siri)
           # =========================
           - alias: HomeKey command -> physical lock
             conditions: >-
@@ -194,6 +183,8 @@ automation:
                       - action: lock.open
                         target:
                           entity_id: lock.entryway
+                      - wait_template: "{{ not is_state('lock.entryway', physical) }}"
+                        timeout: "00:00:05"
 
                   - conditions: "{{ trigger.payload == '1' and physical in ['unlocked', 'open', 'semi_locked'] }}"
                     sequence:
