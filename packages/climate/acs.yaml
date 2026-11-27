@@ -1,6 +1,6 @@
 # Кондиционеры: обёртки climate, переключатели LED и логика по ИК (Follow Me и LED ночью).
-# Спальни Семёна (RM4 Pro) и Иры (RM4 Mini). Гостиная - когда появится Broadlink, на тех же
-# блюпринтах semyonchetvertnyh/ac_led.yaml (template) и semyonchetvertnyh/ac_ir.yaml (automation).
+# Спальни Семёна (RM4 Pro), Иры и гостиная (RM4 Mini) - на общих блюпринтах
+# semyonchetvertnyh/ac_led.yaml (template) и semyonchetvertnyh/ac_ir.yaml (automation).
 # План: Notion "Кондиционер по датчику у кровати".
 
 template:
@@ -125,6 +125,64 @@ template:
             data:
               swing_horizontal_mode: "{{ swing_horizontal_mode }}"
 
+  # То же для гостиной: температура с датчика Aqara (sensor.living_room_temperature).
+      - name: "Living Room AC"
+        unique_id: living_room_climate
+        icon: mdi:air-conditioner
+        availability: "{{ has_value('climate.living_room_ac_tuya') }}"
+        temperature_unit: "°C"
+        min_temperature: 16
+        max_temperature: 30
+        target_temperature_step: 0.5
+        precision: 0.1
+        current_temperature: "{{ states('sensor.living_room_temperature') | float(none) }}"
+
+        hvac_modes: "{{ ['off', 'auto', 'cool', 'dry', 'fan_only', 'heat'] }}"
+        hvac_mode: >
+          {% set mode = states('climate.living_room_ac_tuya') %}
+          {{ 'auto' if mode == 'heat_cool' else mode }}
+        set_hvac_mode:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: climate.living_room_ac_tuya
+            data:
+              hvac_mode: "{{ 'heat_cool' if hvac_mode == 'auto' else hvac_mode }}"
+
+        target_temperature: "{{ state_attr('climate.living_room_ac_tuya', 'temperature') }}"
+        set_temperature:
+          - action: climate.set_temperature
+            target:
+              entity_id: climate.living_room_ac_tuya
+            data:
+              temperature: "{{ temperature }}"
+
+        preset_modes: "{{ state_attr('climate.living_room_ac_tuya', 'preset_modes') }}"
+        preset_mode: "{{ state_attr('climate.living_room_ac_tuya', 'preset_mode') }}"
+        set_preset_mode:
+          - action: climate.set_preset_mode
+            target:
+              entity_id: climate.living_room_ac_tuya
+            data:
+              preset_mode: "{{ preset_mode }}"
+
+        swing_modes: "{{ state_attr('climate.living_room_ac_tuya', 'swing_modes') }}"
+        swing_mode: "{{ state_attr('climate.living_room_ac_tuya', 'swing_mode') }}"
+        set_swing_mode:
+          - action: climate.set_swing_mode
+            target:
+              entity_id: climate.living_room_ac_tuya
+            data:
+              swing_mode: "{{ swing_mode }}"
+
+        swing_horizontal_modes: "{{ state_attr('climate.living_room_ac_tuya', 'swing_horizontal_modes') }}"
+        swing_horizontal_mode: "{{ state_attr('climate.living_room_ac_tuya', 'swing_horizontal_mode') }}"
+        set_swing_horizontal_mode:
+          - action: climate.set_swing_horizontal_mode
+            target:
+              entity_id: climate.living_room_ac_tuya
+            data:
+              swing_horizontal_mode: "{{ swing_horizontal_mode }}"
+
   # LED переключается только ИК-командой toggle_led без обратной связи, поэтому состояние держит сам
   # переключатель: загорается сам при включении кондиционера, гаснет при выключении.
   - name: "Semyon’s Bedroom AC LED"
@@ -146,6 +204,17 @@ template:
         climate: climate.irynas_bedroom_ac
         remote: remote.irynas_bedroom
         device: irynas_bedroom_ac
+        command: "b64:JgDKAJGNFDMUDxQzFDIUMxQPFA8UMxQPFDMUDxQPFBATMxQyFQ8UMhQzFDIVMhQPFDMUDxQzFA8UDxQPFBAUMhQQFDIUDxQQFA8UDxQPFTIUDxQQFDIUMxQyFDMUMhQQFDIUMxQPFKiTjRUyFA8UMxQyFTIUDxQQFDIUDxQzFA8UDxQQFDIUMxQPFDMUMhQzFDIUEBQyFA8UMxQPFBAUDxQPFDMUDxQyFBAUDxQPFBAUDxQyFBAUDxQyFDMUMhUyFDIVDxQyFDMUDxQADQU="
+
+  # Тот же скопированный код для гостиной.
+  - name: "Living Room AC LED"
+    unique_id: living_room_ac_led
+    use_blueprint:
+      path: semyonchetvertnyh/ac_led.yaml
+      input:
+        climate: climate.living_room_ac
+        remote: remote.living_room
+        device: living_room_ac
         command: "b64:JgDKAJGNFDMUDxQzFDIUMxQPFA8UMxQPFDMUDxQPFBATMxQyFQ8UMhQzFDIVMhQPFDMUDxQzFA8UDxQPFBAUMhQQFDIUDxQQFA8UDxQPFTIUDxQQFDIUMxQyFDMUMhQQFDIUMxQPFKiTjRUyFA8UMxQyFTIUDxQQFDIUDxQzFA8UDxQQFDIUMxQPFDMUMhQzFDIUEBQyFA8UMxQPFBAUDxQPFDMUDxQyFBAUDxQPFBAUDxQyFBAUDxQyFDMUMhUyFDIVDxQyFDMUDxQADQU="
 
 automation:
@@ -182,3 +251,19 @@ automation:
         update_interval: "/2"
         asleep_sensor: binary_sensor.iryna_asleep
         led_switch: switch.irynas_bedroom_ac_led
+
+  - alias: "Living Room AC"
+    id: living_room_ac
+    description: >
+      Follow Me: передаёт кондиционеру в гостиной температуру датчика Aqara через ИК
+      (Broadlink) при каждом изменении датчика и раз в 2 минуты, в любом режиме.
+      LED: гасит LED кондиционера, пока все спят.
+    use_blueprint:
+      path: semyonchetvertnyh/ac_ir.yaml
+      input:
+        temperature_sensor: sensor.living_room_temperature
+        remote: remote.living_room
+        climate: climate.living_room_ac
+        update_interval: "/2"
+        asleep_sensor: binary_sensor.residents_asleep
+        led_switch: switch.living_room_ac_led
