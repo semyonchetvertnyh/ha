@@ -70,6 +70,7 @@ homekit:
 
         # Fans
         - fan.homekit_irynas_bedroom_air_purifier
+        - fan.homekit_semyons_bedroom_ac_fan
         - humidifier.semyons_bedroom_oil_diffuser
 
         # Air Quality
@@ -205,6 +206,8 @@ homekit:
         type: air_purifier
         linked_pm25_sensor: sensor.irynas_bedroom_air_purifier_pm2_5
         linked_filter_life_level_sensor: sensor.irynas_bedroom_air_purifier_filter_life_level
+      fan.homekit_semyons_bedroom_ac_fan:
+        name: Semyon’s Bedroom AC Fan
       humidifier.semyons_bedroom_oil_diffuser:
         name: Semyon’s Bedroom Oil Diffuser
 
@@ -315,6 +318,70 @@ template:
         speed_count: 3
         preset_modes:
           - Auto
+
+      # Режим Fan only кондиционера в спальне Семёна отдельным вентилятором: термостат HomeKit его не умеет.
+      # Вкл - режим fan_only, выкл - выключает AC, только если он сейчас в fan_only.
+      # Скорость - от fan.semyons_bedroom_ac (tuya_local).
+      - name: "HomeKit: Semyon’s Bedroom AC Fan"
+        unique_id: homekit_semyons_bedroom_ac_fan
+        availability: "{{ has_value('climate.semyons_bedroom_ac') }}"
+        state: "{{ is_state('climate.semyons_bedroom_ac', 'fan_only') }}"
+        percentage: >
+          {{ state_attr('fan.semyons_bedroom_ac', 'percentage')
+             if is_state('climate.semyons_bedroom_ac', 'fan_only') else 0 }}
+        turn_on:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: climate.semyons_bedroom_ac
+            data:
+              hvac_mode: fan_only
+          - if:
+              - "{{ percentage is defined and percentage | int(0) > 0 }}"
+            then:
+              - action: fan.set_percentage
+                target:
+                  entity_id: fan.semyons_bedroom_ac
+                data:
+                  percentage: "{{ percentage }}"
+        turn_off:
+          - if:
+              - condition: state
+                entity_id: climate.semyons_bedroom_ac
+                state: fan_only
+            then:
+              - action: climate.turn_off
+                target:
+                  entity_id: climate.semyons_bedroom_ac
+        set_percentage:
+          - if:
+              - "{{ percentage | int(0) == 0 }}"
+            then:
+              - if:
+                  - condition: state
+                    entity_id: climate.semyons_bedroom_ac
+                    state: fan_only
+                then:
+                  - action: climate.turn_off
+                    target:
+                      entity_id: climate.semyons_bedroom_ac
+            else:
+              - if:
+                  - condition: not
+                    conditions:
+                      - condition: state
+                        entity_id: climate.semyons_bedroom_ac
+                        state: fan_only
+                then:
+                  - action: climate.set_hvac_mode
+                    target:
+                      entity_id: climate.semyons_bedroom_ac
+                    data:
+                      hvac_mode: fan_only
+              - action: fan.set_percentage
+                target:
+                  entity_id: fan.semyons_bedroom_ac
+                data:
+                  percentage: "{{ percentage }}"
 
   # Обёртка без устройства: HomeKit Bridge сам привязывает event.intercom_doorbell к замку,
   # если они на одном устройстве, и в Apple Home у замка появляется лишняя кнопка звонка.
